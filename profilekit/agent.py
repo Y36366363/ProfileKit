@@ -6,6 +6,7 @@ from pathlib import Path
 
 from agents import Agent, Runner
 
+from .env import load_env_file
 from .models import AgentTurn, ProfileSession
 from .workflow import InvalidTransition, apply_turn
 
@@ -15,6 +16,7 @@ SYSTEM_PROMPT = (ROOT / "config" / "system_prompt.md").read_text(encoding="utf-8
 
 
 def build_agent() -> Agent:
+    load_env_file(ROOT / ".env")
     model = os.environ.get("PROFILEKIT_MODEL", "gpt-6-astra")
     return Agent(
         name="ProfileKit",

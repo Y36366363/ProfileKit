@@ -37,6 +37,10 @@ export PROFILEKIT_MODEL="gpt-6-astra"
 profilekit
 ```
 
+Alternatively, place the variables in the ignored local `.env` file. ProfileKit
+loads it automatically and does not override values already exported in your
+terminal.
+
 Pass sources explicitly with repeatable `--source` options:
 
 ```bash
@@ -86,3 +90,20 @@ git push -u origin main
 
 Review `git status` before committing. `.venv`, `.env`, and `.profilekit` are
 ignored so dependencies, secrets, and local profile sessions are not uploaded.
+
+## Test API credentials safely
+
+`.env` is ignored by Git. `.env.example` contains variable names only and is
+safe to commit. The diagnostic script never prints keys or generated content:
+
+```bash
+# Authentication and model-list checks only
+python scripts/test_api_keys.py
+
+# Also send one minimal generation request to each provider
+python scripts/test_api_keys.py --generate
+```
+
+The local ProfileKit runtime currently uses the OpenAI Agents SDK. DeepSeek and
+Gemini are checked independently; their presence in `.env` does not silently
+route ProfileKit conversations to those services.

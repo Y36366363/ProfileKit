@@ -3,6 +3,8 @@ __pycache__/
 *.py[cod]
 .profilekit/
 .env
+.env.*
+!.env.example
 dist/
 build/
 *.egg-info/

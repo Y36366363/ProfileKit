@@ -1,6 +1,7 @@
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from profilekit.models import (
     AgentTurn,
@@ -14,6 +15,7 @@ from profilekit.models import (
 )
 from profilekit.workflow import InvalidTransition, apply_turn, validate_transition
 from profilekit.sources import SourceError, build_source_bundle, extract_source
+from profilekit.env import load_env_file
 
 
 def turn(stage: WorkflowStage, record: ProfileRecord | None = None, approval: str | None = None):
@@ -136,6 +138,29 @@ class SourceTests(unittest.TestCase):
             path.write_bytes(b"zip")
             with self.assertRaises(SourceError):
                 extract_source(path)
+
+
+class EnvironmentTests(unittest.TestCase):
+    def test_env_loader_does_not_override_existing_value(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / ".env"
+            path.write_text("TEST_PROFILEKIT_KEY=file-value\n", encoding="utf-8")
+            with patch.dict("os.environ", {"TEST_PROFILEKIT_KEY": "shell-value"}, clear=False):
+                load_env_file(path)
+                import os
+
+                self.assertEqual(os.environ["TEST_PROFILEKIT_KEY"], "shell-value")
+
+    def test_env_loader_reports_duplicates_and_uses_last_file_value(self):
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / ".env"
+            path.write_text("TEST_PROFILEKIT_DUP=first\nTEST_PROFILEKIT_DUP=last\n", encoding="utf-8")
+            with patch.dict("os.environ", {}, clear=True):
+                duplicates = load_env_file(path)
+                import os
+
+                self.assertEqual(duplicates, ["TEST_PROFILEKIT_DUP"])
+                self.assertEqual(os.environ["TEST_PROFILEKIT_DUP"], "last")
 
 
 if __name__ == "__main__":
