@@ -9,13 +9,20 @@ description = "Privacy-conscious agent for editable single-page personal profile
 requires-python = ">=3.11"
 dependencies = [
   "openai-agents>=0.22,<0.23",
+  "fastapi>=0.116,<1",
   "pydantic>=2.12,<3",
   "pypdf>=6.8,<7",
   "python-docx>=1.2,<2",
+  "python-multipart>=0.0.20,<1",
+  "uvicorn>=0.35,<1",
 ]
 
 [project.scripts]
 profilekit = "profilekit.cli:main"
+profilekit-web = "profilekit.web:main"
 
 [tool.setuptools.packages.find]
 include = ["profilekit*"]
+
+[tool.setuptools.package-data]
+profilekit = ["webui/*"]

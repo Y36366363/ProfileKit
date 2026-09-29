@@ -53,6 +53,29 @@ version; the image is registered as requiring authorization and the agent offers
 a text-only or placeholder route. A supplied file is approved for inspection,
 not automatically for public display.
 
+## Run the classroom web app
+
+The visual workspace is the recommended way to demonstrate ProfileKit:
+
+```bash
+source .venv/bin/activate
+profilekit-web
+```
+
+It opens `http://127.0.0.1:8765` and provides:
+
+- an 11-stage workflow visualization;
+- conversational intake and source review;
+- drag-and-drop source uploads;
+- a live Personal Profile Record with item-level privacy decisions;
+- a fictional, one-click classroom demonstration scenario; and
+- local JSON export for inspecting the agent state.
+
+Use `profilekit-web --no-browser` when you do not want it to open a browser
+automatically. The web session is stored locally in
+`.profilekit/web-session.json`, ignored by Git, and written with user-only file
+permissions. API keys remain on the server and are never sent to the page.
+
 Session data is saved locally to `.profilekit/session.json` by default. Do not
 commit that file; it can contain personal information. Choose a different path
 with `profilekit --session /path/to/session.json`.

@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="ProfileKit 隐私优先的单页个人资料设计助手" />
+    <title>ProfileKit · 资料设计工作台</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23131d35'/%3E%3Cpath d='M8 8h10a6 6 0 0 1 0 12h-5v5H8V8Zm5 5v3h5a1.5 1.5 0 0 0 0-3h-5Z' fill='%236ee7d2'/%3E%3C/svg%3E" />
+    <link rel="stylesheet" href="/assets/styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#conversation">跳到对话区</a>
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">P</div>
+        <div>
+          <strong>ProfileKit</strong>
+          <span>资料设计工作台</span>
+        </div>
+      </div>
+      <div class="runtime" aria-label="运行状态">
+        <span class="status-dot" id="runtimeDot"></span>
+        <span id="runtimeLabel">正在检查本地环境</span>
+      </div>
+      <div class="top-actions">
+        <button class="button ghost" id="demoButton" type="button">载入演示案例</button>
+        <button class="button ghost danger" id="resetButton" type="button">新建会话</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="rail" aria-label="ProfileKit 工作流程">
+        <div class="panel-heading">
+          <p class="eyebrow">Workflow</p>
+          <h1>从材料到单页成品</h1>
+        </div>
+        <ol class="steps" id="workflowSteps"></ol>
+        <div class="privacy-note">
+          <span class="shield" aria-hidden="true">◇</span>
+          <div>
+            <strong>隐私默认值</strong>
+            <p>不展示住址；电话、链接、图片和第三方资料需单独批准。</p>
+          </div>
+        </div>
+      </aside>
+
+      <section class="conversation" id="conversation" aria-labelledby="conversationTitle">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Conversation</p>
+            <h2 id="conversationTitle">与 ProfileKit 对话</h2>
+          </div>
+          <span class="stage-badge" id="stageBadge">信息采集</span>
+        </div>
+
+        <div class="dropzone" id="dropzone">
+          <input id="fileInput" type="file" multiple accept=".txt,.md,.json,.yaml,.yml,.csv,.tsv,.pdf,.docx,.png,.jpg,.jpeg,.gif,.webp,.heic" />
+          <div class="upload-icon" aria-hidden="true">＋</div>
+          <div>
+            <strong>拖放或选择资料</strong>
+            <span>PDF、DOCX、文本或图片；单个文件不超过 5 MB</span>
+          </div>
+          <button class="button compact" id="chooseFiles" type="button">选择文件</button>
+        </div>
+        <div class="source-list" id="sourceList" aria-live="polite"></div>
+
+        <div class="messages" id="messages" aria-live="polite"></div>
+
+        <form class="composer" id="chatForm">
+          <label for="messageInput">输入下一条信息</label>
+          <textarea id="messageInput" rows="3" placeholder="例如：我想制作一页式研究者简介，读者是课程教师……" required></textarea>
+          <div class="composer-footer">
+            <span id="composerHint">只问下一步需要的问题</span>
+            <button class="button primary" id="sendButton" type="submit">发送</button>
+          </div>
+        </form>
+      </section>
+
+      <aside class="record" aria-labelledby="recordTitle">
+        <div class="section-header">
+          <div>
+            <p class="eyebrow">Live record</p>
+            <h2 id="recordTitle">Personal Profile Record</h2>
+          </div>
+          <a class="icon-button" href="/api/export" title="导出会话 JSON" aria-label="导出会话 JSON">↓</a>
+        </div>
+        <div class="record-summary" id="recordSummary"></div>
+        <div class="record-items" id="recordItems"></div>
+        <div class="empty-state" id="recordEmpty">
+          <div class="empty-monogram" aria-hidden="true">PK</div>
+          <h3>记录会随着对话形成</h3>
+          <p>先说明用途、受众、场景和资料来源，ProfileKit 才会整理可审批的信息。</p>
+        </div>
+      </aside>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="/assets/app.js" defer></script>
+  </body>
+</html>
