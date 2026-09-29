@@ -2,6 +2,7 @@ import os
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
@@ -26,6 +27,7 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("ProfileKit", response.text)
         self.assertIn("Personal Profile Record", response.text)
+        self.assertIn("From sources to one clear page", response.text)
 
     def test_public_state_never_exposes_api_key(self):
         response = self.client.get("/api/session")
@@ -36,6 +38,24 @@ class WebAppTests(unittest.TestCase):
             self.assertNotIn(openai_key, body)
         self.assertNotIn("DEEPSEEK_API_KEY", body)
         self.assertNotIn("GEMINI_API_KEY", body)
+        self.assertGreaterEqual(len(response.json()["runtime"]["models"]), 5)
+
+    def test_model_can_be_changed_for_the_local_session(self):
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "test-key"}, clear=False):
+            response = self.client.patch(
+                "/api/model",
+                json={"provider": "openai", "model": "gpt-6-luna"},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["model_provider"], "openai")
+        self.assertEqual(response.json()["model_name"], "gpt-6-luna")
+
+    def test_unknown_model_is_rejected(self):
+        response = self.client.patch(
+            "/api/model",
+            json={"provider": "openai", "model": "made-up-model"},
+        )
+        self.assertEqual(response.status_code, 400)
 
     def test_demo_loads_fictional_profile_record(self):
         response = self.client.post("/api/demo")

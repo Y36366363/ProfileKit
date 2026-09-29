@@ -104,6 +104,8 @@ class TranscriptMessage(BaseModel):
 
 class ProfileSession(BaseModel):
     stage: WorkflowStage = WorkflowStage.INTAKE
+    model_provider: Literal["deepseek", "openai"] = "deepseek"
+    model_name: str = "deepseek-flash"
     record: ProfileRecord = Field(default_factory=ProfileRecord)
     transcript: list[TranscriptMessage] = Field(default_factory=list)
     audit_log: list[str] = Field(default_factory=list)

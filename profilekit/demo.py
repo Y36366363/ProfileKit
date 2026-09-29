@@ -89,6 +89,8 @@ def build_demo_session() -> ProfileSession:
     )
     return ProfileSession(
         stage=WorkflowStage.PROFILE_RECORD,
+        model_provider="deepseek",
+        model_name="deepseek-flash",
         record=record,
         transcript=[
             TranscriptMessage(

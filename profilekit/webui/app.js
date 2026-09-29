@@ -1,30 +1,30 @@
 const stages = [
-  ["intake", "信息采集"],
-  ["source_review", "来源审阅"],
-  ["personal_profile_record", "个人资料记录"],
-  ["privacy_and_authorization_review", "隐私与授权"],
-  ["user_content_approval", "内容批准"],
-  ["format_recommendation", "格式建议"],
-  ["visual_direction_choice", "视觉方向"],
-  ["draft", "单页草稿"],
-  ["final_review", "最终审阅"],
-  ["user_approval", "用户批准"],
-  ["editable_output_or_export_instructions", "可编辑输出"],
+  ["intake", "Intake"],
+  ["source_review", "Source review"],
+  ["personal_profile_record", "Profile record"],
+  ["privacy_and_authorization_review", "Privacy & permission"],
+  ["user_content_approval", "Content approval"],
+  ["format_recommendation", "Format recommendation"],
+  ["visual_direction_choice", "Visual direction"],
+  ["draft", "One-page draft"],
+  ["final_review", "Final review"],
+  ["user_approval", "User approval"],
+  ["editable_output_or_export_instructions", "Editable output"],
 ];
 
 const statusLabels = {
-  confirmed: "来源确认",
-  user_approved: "用户批准",
-  needs_confirmation: "待确认",
-  suggested_wording: "建议措辞",
-  placeholder: "占位符",
-  not_supported: "不支持",
+  confirmed: "Source confirmed",
+  user_approved: "User approved",
+  needs_confirmation: "Needs confirmation",
+  suggested_wording: "Suggested wording",
+  placeholder: "Placeholder",
+  not_supported: "Not supported",
 };
 
 const els = Object.fromEntries([
   "workflowSteps", "stageBadge", "messages", "recordSummary", "recordItems", "recordEmpty",
   "runtimeDot", "runtimeLabel", "chatForm", "messageInput", "sendButton", "dropzone",
-  "fileInput", "chooseFiles", "sourceList", "demoButton", "resetButton", "toast"
+  "fileInput", "chooseFiles", "sourceList", "demoButton", "resetButton", "toast", "modelSelect"
 ].map(id => [id, document.getElementById(id)]));
 
 let current = null;
@@ -43,7 +43,7 @@ function showToast(message, error = false) {
 async function api(path, options = {}) {
   const response = await fetch(path, options);
   const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.detail || "请求未完成");
+  if (!response.ok) throw new Error(data.detail || "The request could not be completed.");
   return data;
 }
 
@@ -60,7 +60,7 @@ function renderWorkflow(stage) {
 
 function renderMessages(messages) {
   if (!messages.length) {
-    els.messages.innerHTML = `<div class="message assistant">你好，我是 ProfileKit。请告诉我：你要制作什么、谁会查看、使用场景是什么，以及希望使用哪些资料。</div>`;
+    els.messages.innerHTML = `<div class="message assistant">Hello, I’m ProfileKit. What are you creating, who will view it, what is the occasion, and which source materials should I use?</div>`;
   } else {
     els.messages.innerHTML = messages.map(message => `
       <div class="message ${message.role}">${escapeHtml(message.content)}</div>
@@ -72,8 +72,8 @@ function renderMessages(messages) {
 function renderRecord(record) {
   const metadata = record.profile_metadata || {};
   const summaryFields = [
-    ["受众", metadata.audience], ["用途", metadata.purpose],
-    ["类型", metadata.output_type], ["语言", metadata.language],
+    ["Audience", metadata.audience], ["Purpose", metadata.purpose],
+    ["Format", metadata.output_type], ["Language", metadata.language],
   ].filter(([, value]) => value);
   els.recordSummary.innerHTML = summaryFields.map(([label, value]) => `
     <div class="meta-card"><span>${label}</span><strong>${escapeHtml(value)}</strong></div>
@@ -89,9 +89,9 @@ function renderRecord(record) {
         <span class="status-pill ${item.status}">${statusLabels[item.status] || escapeHtml(item.status)}</span>
       </div>
       <p class="item-value">${escapeHtml(item.value)}</p>
-      <p class="item-source">来源：${escapeHtml(item.source || "用户输入")}</p>
-      <div class="decision-row" aria-label="${escapeHtml(item.label)} 的公开使用决定">
-        ${[["include","包含"],["exclude","排除"],["revise","修改"],["restrict","限制"]].map(([decision, label]) => `
+      <p class="item-source">Source: ${escapeHtml(item.source || "User input")}</p>
+      <div class="decision-row" aria-label="Public-use decision for ${escapeHtml(item.label)}">
+        ${[["include","Include"],["exclude","Exclude"],["revise","Revise"],["restrict","Restrict"]].map(([decision, label]) => `
           <button class="decision ${item.user_decision === decision ? "active" : ""}" data-index="${index}" data-decision="${decision}" type="button">${label}</button>
         `).join("")}
       </div>
@@ -105,13 +105,25 @@ function render(state) {
   renderMessages(state.transcript || []);
   renderRecord(state.record || {});
   const ready = state.runtime?.api_key_ready;
+  renderModelSelect(state.runtime);
   els.runtimeDot.classList.toggle("ready", ready);
   els.runtimeLabel.textContent = ready
-    ? `${state.runtime.provider} · ${state.runtime.model} · 本地会话`
-    : "尚未找到 OpenAI API key";
+    ? `${state.runtime.provider_label} · local session`
+    : `API key missing for ${state.runtime.model_label}`;
   if (state.pending_source_count) {
-    els.sourceList.textContent = `${state.pending_source_count} 组资料将在下一条消息中送交审阅`;
+    els.sourceList.textContent = `${state.pending_source_count} source bundle will be reviewed with your next message.`;
   }
+}
+
+function renderModelSelect(runtime) {
+  const selected = `${runtime.provider}:${runtime.model}`;
+  const costLabels = {lowest: "lowest cost", low: "low cost", medium: "balanced", high: "highest cost"};
+  els.modelSelect.innerHTML = (runtime.models || []).map(option => `
+    <option value="${option.provider}:${option.model}" ${`${option.provider}:${option.model}` === selected ? "selected" : ""} ${option.ready ? "" : "disabled"}>
+      ${escapeHtml(option.label)} · ${costLabels[option.cost_tier] || option.cost_tier}${option.ready ? "" : " · key missing"}
+    </option>
+  `).join("");
+  els.modelSelect.title = (runtime.models || []).find(option => `${option.provider}:${option.model}` === selected)?.description || "Choose a model";
 }
 
 async function refresh() {
@@ -123,7 +135,7 @@ els.chatForm.addEventListener("submit", async event => {
   const message = els.messageInput.value.trim();
   if (!message) return;
   els.sendButton.disabled = true;
-  els.messages.insertAdjacentHTML("beforeend", `<div class="message user">${escapeHtml(message)}</div><div class="message loading">ProfileKit 正在整理记录…</div>`);
+  els.messages.insertAdjacentHTML("beforeend", `<div class="message user">${escapeHtml(message)}</div><div class="message loading">ProfileKit is organizing the record…</div>`);
   els.messages.scrollTop = els.messages.scrollHeight;
   els.messageInput.value = "";
   try {
@@ -146,10 +158,10 @@ async function uploadFiles(files) {
   if (!files.length) return;
   const form = new FormData();
   [...files].forEach(file => form.append("files", file));
-  els.sourceList.textContent = "正在安全读取资料…";
+  els.sourceList.textContent = "Reading the selected sources…";
   try {
     const data = await api("/api/upload", {method: "POST", body: form});
-    els.sourceList.textContent = `已读取：${data.accepted.join("、")}。资料将在下一条消息中进入来源审阅。`;
+    els.sourceList.textContent = `Ready: ${data.accepted.join(", ")}. The sources will enter review with your next message.`;
     current = data.session;
   } catch (error) {
     els.sourceList.textContent = "";
@@ -177,7 +189,7 @@ els.recordItems.addEventListener("click", async event => {
       headers: {"Content-Type": "application/json"},
       body: JSON.stringify({decision: button.dataset.decision}),
     }));
-    showToast("资料决定已保存");
+    showToast("The item decision was saved.");
   } catch (error) {
     showToast(error.message, true);
   }
@@ -185,14 +197,32 @@ els.recordItems.addEventListener("click", async event => {
 
 els.demoButton.addEventListener("click", async () => {
   render(await api("/api/demo", {method: "POST"}));
-  showToast("已载入虚构演示案例");
+  showToast("The fictional demo case is ready.");
 });
 
 els.resetButton.addEventListener("click", async () => {
-  if (!confirm("开始新会话？当前本地会话记录会被替换。")) return;
+  if (!confirm("Start a new session? This will replace the current local session record.")) return;
   render(await api("/api/reset", {method: "POST"}));
   els.sourceList.textContent = "";
-  showToast("已开始新会话");
+  showToast("A new session is ready.");
+});
+
+els.modelSelect.addEventListener("change", async () => {
+  const [provider, model] = els.modelSelect.value.split(":", 2);
+  els.modelSelect.disabled = true;
+  try {
+    render(await api("/api/model", {
+      method: "PATCH",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({provider, model}),
+    }));
+    showToast(`Model changed to ${els.modelSelect.options[els.modelSelect.selectedIndex].text.split(" · ")[0]}.`);
+  } catch (error) {
+    showToast(error.message, true);
+    await refresh();
+  } finally {
+    els.modelSelect.disabled = false;
+  }
 });
 
 els.messageInput.addEventListener("keydown", event => {

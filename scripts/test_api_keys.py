@@ -78,7 +78,7 @@ def test_openai(key: str, generate: bool, env: dict[str, str]) -> Result:
         model_ids = {item.get("id") for item in body.get("data", [])}
     except Exception as error:
         return Result("OpenAI", "failed", "not run", safe_failure(error))
-    model = env.get("PROFILEKIT_MODEL", "gpt-6-astra")
+    model = env.get("OPENAI_MODEL", "gpt-6-luna")
     if not generate:
         return Result("OpenAI", "passed", "skipped", f"HTTP {status}; {len(model_ids)} models visible")
     try:

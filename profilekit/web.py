@@ -19,6 +19,7 @@ from .agent import ROOT, run_turn
 from .demo import build_demo_session
 from .env import load_env_file
 from .models import ItemStatus, ProfileSession
+from .providers import available_catalog, default_selection, find_model, model_is_ready
 from .sources import MAX_SOURCE_BYTES, SourceError, build_source_bundle
 
 
@@ -35,6 +36,11 @@ class DecisionRequest(BaseModel):
     decision: Literal["pending", "include", "exclude", "revise", "restrict"]
 
 
+class ModelSelectionRequest(BaseModel):
+    provider: Literal["deepseek", "openai"]
+    model: str = Field(min_length=1, max_length=80)
+
+
 class SessionStore:
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -44,7 +50,8 @@ class SessionStore:
 
     def _load(self) -> ProfileSession:
         if not self.path.exists():
-            return ProfileSession()
+            provider, model = default_selection()
+            return ProfileSession(model_provider=provider, model_name=model)
         try:
             return ProfileSession.model_validate_json(self.path.read_text(encoding="utf-8"))
         except Exception:
@@ -66,11 +73,15 @@ def public_state() -> dict:
         local_session = str(store.path.relative_to(ROOT))
     except ValueError:
         local_session = store.path.name
+    selected = find_model(store.session.model_provider, store.session.model_name)
     payload["pending_source_count"] = len(store.pending_sources)
     payload["runtime"] = {
-        "provider": "OpenAI",
-        "model": os.environ.get("PROFILEKIT_MODEL", "gpt-6-astra"),
-        "api_key_ready": bool(os.environ.get("OPENAI_API_KEY")),
+        "provider": store.session.model_provider,
+        "provider_label": {"deepseek": "DeepSeek", "openai": "OpenAI"}[store.session.model_provider],
+        "model": store.session.model_name,
+        "model_label": selected.label if selected else store.session.model_name,
+        "api_key_ready": bool(selected and model_is_ready(selected)),
+        "models": available_catalog(),
         "local_session": local_session,
     }
     return payload
@@ -89,7 +100,12 @@ def chat(request: ChatRequest) -> JSONResponse:
             message += "\n\n" + "\n\n---\n\n".join(store.pending_sources)
             store.pending_sources.clear()
         try:
-            store.session, reply = run_turn(store.session, message)
+            store.session, reply = run_turn(
+                store.session,
+                message,
+                store.session.model_provider,
+                store.session.model_name,
+            )
         except Exception as error:
             raise HTTPException(
                 status_code=422,
@@ -97,6 +113,24 @@ def chat(request: ChatRequest) -> JSONResponse:
             ) from error
         store.save()
     return JSONResponse({"reply": reply, "session": public_state()})
+
+
+@app.patch("/api/model")
+def select_model(request: ModelSelectionRequest) -> JSONResponse:
+    option = find_model(request.provider, request.model)
+    if option is None:
+        raise HTTPException(status_code=400, detail="This model is not in the ProfileKit catalog.")
+    if not model_is_ready(option):
+        raise HTTPException(
+            status_code=400,
+            detail=f"The API key for {option.label} is not configured.",
+        )
+    with store.lock:
+        store.session.model_provider = request.provider
+        store.session.model_name = request.model
+        store.session.audit_log.append(f"model selected: {request.provider}/{request.model}")
+        store.save()
+    return JSONResponse(public_state())
 
 
 @app.post("/api/upload")
@@ -145,7 +179,11 @@ def decide_item(item_index: int, request: DecisionRequest) -> JSONResponse:
 @app.post("/api/demo")
 def load_demo() -> JSONResponse:
     with store.lock:
+        provider = store.session.model_provider
+        model = store.session.model_name
         store.session = build_demo_session()
+        store.session.model_provider = provider
+        store.session.model_name = model
         store.pending_sources.clear()
         store.save()
     return JSONResponse(public_state())
@@ -154,7 +192,9 @@ def load_demo() -> JSONResponse:
 @app.post("/api/reset")
 def reset_session() -> JSONResponse:
     with store.lock:
-        store.session = ProfileSession()
+        provider = store.session.model_provider
+        model = store.session.model_name
+        store.session = ProfileSession(model_provider=provider, model_name=model)
         store.pending_sources.clear()
         store.save()
     return JSONResponse(public_state())

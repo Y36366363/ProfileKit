@@ -6,6 +6,7 @@ from pathlib import Path
 
 from .agent import run_turn
 from .models import ProfileSession
+from .providers import default_selection
 from .sources import SourceError, build_source_bundle
 
 
@@ -27,7 +28,8 @@ To begin:
 
 def load_session(path: Path) -> ProfileSession:
     if not path.exists():
-        return ProfileSession()
+        provider, model = default_selection()
+        return ProfileSession(model_provider=provider, model_name=model)
     return ProfileSession.model_validate_json(path.read_text(encoding="utf-8"))
 
 
@@ -49,7 +51,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    session = ProfileSession() if args.reset else load_session(args.session)
+    if args.reset:
+        provider, model = default_selection()
+        session = ProfileSession(model_provider=provider, model_name=model)
+    else:
+        session = load_session(args.session)
     try:
         source_bundle = build_source_bundle(args.source)
     except SourceError as error:
@@ -58,7 +64,10 @@ def main() -> None:
     if not session.transcript:
         print(WELCOME)
     else:
-        print(f"ProfileKit resumed at stage: {session.stage.value}")
+        print(
+            f"ProfileKit resumed at stage: {session.stage.value} "
+            f"using {session.model_provider}/{session.model_name}"
+        )
 
     while True:
         try:

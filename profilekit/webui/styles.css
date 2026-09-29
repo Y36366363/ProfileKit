@@ -17,6 +17,18 @@
 
 * { box-sizing: border-box; }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 html { font-size: 16px; }
 
 body {
@@ -77,6 +89,17 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .brand strong { display: block; font-size: 1.05rem; letter-spacing: .02em; }
 .brand span { display: block; margin-top: 2px; color: #b9c3d7; font-size: .78rem; }
 .runtime { gap: 9px; color: #d9e1ef; font-size: .88rem; }
+.runtime select {
+  max-width: 220px;
+  min-height: 38px;
+  padding: 0 32px 0 11px;
+  color: white;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 9px;
+  background: var(--navy-soft);
+  font-weight: 750;
+}
+.runtime select:focus-visible { outline: 3px solid rgba(110,231,210,.3); outline-offset: 2px; }
 .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 0 4px rgba(242,184,75,.14); }
 .status-dot.ready { background: var(--mint); box-shadow: 0 0 0 4px rgba(110,231,210,.14); }
 .top-actions { justify-content: flex-end; gap: 8px; }
@@ -191,6 +214,8 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 760px) {
   .topbar { grid-template-columns: 1fr auto; padding: 12px 16px; }
   .runtime { grid-row: 2; grid-column: 1 / -1; }
+  .runtime select { max-width: 180px; }
+  .runtime #runtimeLabel { display: none; }
   .top-actions .danger { display: none; }
   .workspace { display: block; }
   .rail, .conversation, .record { padding: 22px 16px; }

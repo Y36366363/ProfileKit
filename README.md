@@ -10,7 +10,8 @@ The implementation has two layers:
 - A deterministic workflow controller that prevents approval stages from being
   skipped.
 - One OpenAI Agents SDK agent that performs source review, writing, format
-  recommendations, and draft review within that workflow.
+  recommendations, and draft review within that workflow. The SDK can route the
+  run to DeepSeek's OpenAI-compatible API or to OpenAI.
 
 It does not publish, host, connect accounts, verify personal claims, or decide
 what a user should disclose.
@@ -41,6 +42,11 @@ Alternatively, place the variables in the ignored local `.env` file. ProfileKit
 loads it automatically and does not override values already exported in your
 terminal.
 
+ProfileKit defaults to `deepseek-flash` for lower-cost classroom use. The web
+app can switch each local session among DeepSeek Flash, DeepSeek V4 Pro, OpenAI
+GPT-6 Luna, Sol, and Astra. OpenAI Luna is the recommended low-cost OpenAI
+fallback. A selection is available only when its provider key is configured.
+
 Pass sources explicitly with repeatable `--source` options:
 
 ```bash
@@ -65,6 +71,7 @@ profilekit-web
 It opens `http://127.0.0.1:8765` and provides:
 
 - an 11-stage workflow visualization;
+- an English-first interface and model selector;
 - conversational intake and source review;
 - drag-and-drop source uploads;
 - a live Personal Profile Record with item-level privacy decisions;
@@ -127,6 +134,6 @@ python scripts/test_api_keys.py
 python scripts/test_api_keys.py --generate
 ```
 
-The local ProfileKit runtime currently uses the OpenAI Agents SDK. DeepSeek and
-Gemini are checked independently; their presence in `.env` does not silently
-route ProfileKit conversations to those services.
+The local ProfileKit runtime uses the OpenAI Agents SDK with either OpenAI or
+DeepSeek's OpenAI-compatible API. Gemini remains an independent credential
+check and is not yet a ProfileKit conversation provider.
