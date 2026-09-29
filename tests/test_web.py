@@ -1,10 +1,12 @@
 import os
 import unittest
+from io import BytesIO
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
+from pypdf import PdfReader
 
 from profilekit.models import ProfileSession
 from profilekit.web import SessionStore, app
@@ -64,6 +66,32 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(payload["stage"], "personal_profile_record")
         self.assertGreater(len(payload["record"]["items"]), 0)
         self.assertTrue(all("demo" in (item.get("source") or "").lower() for item in payload["record"]["items"]))
+        self.assertEqual(payload["presentation"]["title"], "Lin Chen")
+        self.assertNotIn("lin.chen@example.edu", str(payload["presentation"]))
+
+    def test_theme_selection_updates_preview_and_persists(self):
+        self.client.post("/api/demo")
+        response = self.client.patch("/api/theme", json={"theme": "modern"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["profile_theme"], "modern")
+        self.assertEqual(response.json()["presentation"]["theme"], "modern")
+        saved = ProfileSession.model_validate_json(web_module.store.path.read_text())
+        self.assertEqual(saved.profile_theme, "modern")
+
+    def test_pdf_export_is_one_page_and_omits_unconfirmed_email(self):
+        self.client.post("/api/demo")
+        response = self.client.get("/api/export/pdf")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"], "application/pdf")
+        reader = PdfReader(BytesIO(response.content))
+        self.assertEqual(len(reader.pages), 1)
+        text = reader.pages[0].extract_text()
+        self.assertIn("Lin Chen", text)
+        self.assertNotIn("lin.chen@example.edu", text)
+
+    def test_empty_profile_cannot_export_pdf(self):
+        response = self.client.get("/api/export/pdf")
+        self.assertEqual(response.status_code, 400)
 
     def test_item_decision_is_saved_with_private_permissions(self):
         self.client.post("/api/demo")

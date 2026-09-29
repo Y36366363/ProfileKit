@@ -75,6 +75,8 @@ It opens `http://127.0.0.1:8765` and provides:
 - conversational intake and source review;
 - drag-and-drop source uploads;
 - a live Personal Profile Record with item-level privacy decisions;
+- a matching one-page preview with Academic, Modern, and Minimal themes;
+- a single-page PDF export that omits restricted and unconfirmed sensitive items;
 - a fictional, one-click classroom demonstration scenario; and
 - local JSON export for inspecting the agent state.
 

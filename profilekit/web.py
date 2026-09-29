@@ -11,7 +11,7 @@ from typing import Literal
 
 import uvicorn
 from fastapi import FastAPI, File, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -20,6 +20,7 @@ from .demo import build_demo_session
 from .env import load_env_file
 from .models import ItemStatus, ProfileSession
 from .providers import available_catalog, default_selection, find_model, model_is_ready
+from .profile_document import THEMES, build_profile_pdf, presentation_payload, theme_catalog
 from .sources import MAX_SOURCE_BYTES, SourceError, build_source_bundle
 
 
@@ -39,6 +40,10 @@ class DecisionRequest(BaseModel):
 class ModelSelectionRequest(BaseModel):
     provider: Literal["deepseek", "openai"]
     model: str = Field(min_length=1, max_length=80)
+
+
+class ThemeSelectionRequest(BaseModel):
+    theme: Literal["academic", "modern", "minimal"]
 
 
 class SessionStore:
@@ -84,6 +89,11 @@ def public_state() -> dict:
         "models": available_catalog(),
         "local_session": local_session,
     }
+    payload["presentation"] = presentation_payload(
+        store.session.record,
+        store.session.profile_theme,
+    )
+    payload["themes"] = theme_catalog()
     return payload
 
 
@@ -129,6 +139,17 @@ def select_model(request: ModelSelectionRequest) -> JSONResponse:
         store.session.model_provider = request.provider
         store.session.model_name = request.model
         store.session.audit_log.append(f"model selected: {request.provider}/{request.model}")
+        store.save()
+    return JSONResponse(public_state())
+
+
+@app.patch("/api/theme")
+def select_theme(request: ThemeSelectionRequest) -> JSONResponse:
+    if request.theme not in THEMES:
+        raise HTTPException(status_code=400, detail="This profile theme is not available.")
+    with store.lock:
+        store.session.profile_theme = request.theme
+        store.session.audit_log.append(f"profile theme selected: {request.theme}")
         store.save()
     return JSONResponse(public_state())
 
@@ -205,6 +226,18 @@ def export_session() -> JSONResponse:
     response = JSONResponse(store.session.model_dump(mode="json"))
     response.headers["Content-Disposition"] = "attachment; filename=profilekit-session.json"
     return response
+
+
+@app.get("/api/export/pdf")
+def export_profile_pdf() -> Response:
+    if not store.session.record.items:
+        raise HTTPException(status_code=400, detail="Add or load profile content before exporting a PDF.")
+    pdf = build_profile_pdf(store.session.record, store.session.profile_theme)
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": "attachment; filename=profilekit-profile.pdf"},
+    )
 
 
 @app.get("/")

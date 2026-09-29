@@ -84,14 +84,33 @@
             <p class="eyebrow">Live record</p>
             <h2 id="recordTitle">Personal Profile Record</h2>
           </div>
-          <a class="icon-button" href="/api/export" title="Export session JSON" aria-label="Export session JSON">↓</a>
+          <a class="icon-button" href="/api/export" title="Export editable session JSON" aria-label="Export editable session JSON">↧</a>
         </div>
-        <div class="record-summary" id="recordSummary"></div>
-        <div class="record-items" id="recordItems"></div>
-        <div class="empty-state" id="recordEmpty">
-          <div class="empty-monogram" aria-hidden="true">PK</div>
-          <h3>Your record grows with the conversation</h3>
-          <p>Start with the purpose, audience, occasion, and sources. ProfileKit will organize each item for review.</p>
+        <div class="view-switch" role="tablist" aria-label="Record view">
+          <button class="view-tab" id="recordTab" role="tab" aria-selected="false" aria-controls="recordView" type="button">Review record</button>
+          <button class="view-tab active" id="previewTab" role="tab" aria-selected="true" aria-controls="previewView" type="button">Live preview</button>
+        </div>
+        <div id="recordView" role="tabpanel" aria-labelledby="recordTab" hidden>
+          <div class="record-summary" id="recordSummary"></div>
+          <div class="record-items" id="recordItems"></div>
+          <div class="empty-state" id="recordEmpty">
+            <div class="empty-monogram" aria-hidden="true">PK</div>
+            <h3>Your record grows with the conversation</h3>
+            <p>Start with the purpose, audience, occasion, and sources. ProfileKit will organize each item for review.</p>
+          </div>
+        </div>
+        <div id="previewView" role="tabpanel" aria-labelledby="previewTab">
+          <div class="preview-toolbar">
+            <div>
+              <label for="themeSelect">Theme template</label>
+              <select id="themeSelect"></select>
+            </div>
+            <a class="button pdf-button" id="pdfButton" href="/api/export/pdf">Export PDF</a>
+          </div>
+          <div class="page-stage">
+            <article class="profile-page theme-academic" id="profilePreview" aria-label="Live one-page profile preview"></article>
+          </div>
+          <p class="preview-note">The preview updates automatically. Restricted and unconfirmed sensitive items stay out of the public page.</p>
         </div>
       </aside>
     </main>

@@ -24,7 +24,8 @@ const statusLabels = {
 const els = Object.fromEntries([
   "workflowSteps", "stageBadge", "messages", "recordSummary", "recordItems", "recordEmpty",
   "runtimeDot", "runtimeLabel", "chatForm", "messageInput", "sendButton", "dropzone",
-  "fileInput", "chooseFiles", "sourceList", "demoButton", "resetButton", "toast", "modelSelect"
+  "fileInput", "chooseFiles", "sourceList", "demoButton", "resetButton", "toast", "modelSelect",
+  "recordTab", "previewTab", "recordView", "previewView", "themeSelect", "profilePreview", "pdfButton"
 ].map(id => [id, document.getElementById(id)]));
 
 let current = null;
@@ -99,11 +100,53 @@ function renderRecord(record) {
   `).join("");
 }
 
+function renderThemeSelect(state) {
+  els.themeSelect.innerHTML = (state.themes || []).map(theme => `
+    <option value="${theme.id}" ${theme.id === state.profile_theme ? "selected" : ""}>
+      ${escapeHtml(theme.label)} · ${escapeHtml(theme.description)}
+    </option>
+  `).join("");
+}
+
+function renderPreview(state) {
+  const profile = state.presentation || {};
+  const sections = (profile.sections || []).map(section => `
+    <section class="profile-section">
+      <h4>${escapeHtml(section.heading)}</h4>
+      ${section.items.map(item => `
+        <div class="profile-entry">
+          <span>${escapeHtml(item.label)}</span>
+          <p>${escapeHtml(item.value)}</p>
+        </div>
+      `).join("")}
+    </section>
+  `).join("");
+  els.profilePreview.className = `profile-page theme-${profile.theme || "academic"}`;
+  els.profilePreview.innerHTML = `
+    <header class="profile-header">
+      <p class="profile-kicker">One-page profile</p>
+      <h3>${escapeHtml(profile.title || "Your Name")}</h3>
+      <p class="profile-role">${escapeHtml(profile.role || "Personal Profile")}</p>
+      ${profile.context ? `<p class="profile-context">${escapeHtml(profile.context)}</p>` : ""}
+    </header>
+    <div class="profile-body">
+      <p class="profile-intro">${escapeHtml(profile.introduction || "Your approved introduction will appear here.")}</p>
+      <div class="profile-sections">${sections || `<div class="profile-placeholder">Approve profile details to build the page.</div>`}</div>
+    </div>
+    <footer>ProfileKit · privacy-reviewed profile <span>1 / 1</span></footer>
+  `;
+  const empty = !(state.record?.items || []).length;
+  els.pdfButton.classList.toggle("disabled", empty);
+  els.pdfButton.setAttribute("aria-disabled", empty.toString());
+}
+
 function render(state) {
   current = state;
   renderWorkflow(state.stage);
   renderMessages(state.transcript || []);
   renderRecord(state.record || {});
+  renderThemeSelect(state);
+  renderPreview(state);
   const ready = state.runtime?.api_key_ready;
   renderModelSelect(state.runtime);
   els.runtimeDot.classList.toggle("ready", ready);
@@ -222,6 +265,43 @@ els.modelSelect.addEventListener("change", async () => {
     await refresh();
   } finally {
     els.modelSelect.disabled = false;
+  }
+});
+
+function selectView(view) {
+  const preview = view === "preview";
+  els.previewView.hidden = !preview;
+  els.recordView.hidden = preview;
+  els.previewTab.classList.toggle("active", preview);
+  els.recordTab.classList.toggle("active", !preview);
+  els.previewTab.setAttribute("aria-selected", preview.toString());
+  els.recordTab.setAttribute("aria-selected", (!preview).toString());
+}
+
+els.previewTab.addEventListener("click", () => selectView("preview"));
+els.recordTab.addEventListener("click", () => selectView("record"));
+
+els.themeSelect.addEventListener("change", async () => {
+  els.themeSelect.disabled = true;
+  try {
+    render(await api("/api/theme", {
+      method: "PATCH",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({theme: els.themeSelect.value}),
+    }));
+    showToast("The preview and PDF theme were updated.");
+  } catch (error) {
+    showToast(error.message, true);
+    await refresh();
+  } finally {
+    els.themeSelect.disabled = false;
+  }
+});
+
+els.pdfButton.addEventListener("click", event => {
+  if (els.pdfButton.classList.contains("disabled")) {
+    event.preventDefault();
+    showToast("Add or load profile content before exporting a PDF.", true);
   }
 });
 
