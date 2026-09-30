@@ -16,6 +16,13 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from .agent import ROOT, run_turn
+from .configuration import (
+    DesignPreferences,
+    EditableProfile,
+    ProfileConfig,
+    apply_profile_config,
+    load_profile_config,
+)
 from .demo import build_demo_session
 from .env import load_env_file
 from .models import ItemStatus, ProfileSession
@@ -44,6 +51,22 @@ class ModelSelectionRequest(BaseModel):
 
 class ThemeSelectionRequest(BaseModel):
     theme: Literal["academic", "modern", "minimal"]
+
+
+class PreferencesRequest(BaseModel):
+    name: str = Field(default="", max_length=120)
+    role: str = Field(default="", max_length=180)
+    introduction: str = Field(default="", max_length=1_200)
+    audience: str = Field(default="", max_length=300)
+    occasion: str = Field(default="", max_length=300)
+    purpose: str = Field(default="", max_length=500)
+    tone: str = Field(default="", max_length=200)
+    visual_preferences: str = Field(default="", max_length=500)
+    privacy_restrictions: str = Field(default="", max_length=500)
+    theme: Literal["academic", "modern", "minimal"] = "academic"
+    accent_color: str = "#147D70"
+    font_style: Literal["serif", "sans", "hybrid"] = "hybrid"
+    layout_density: Literal["compact", "balanced", "airy"] = "balanced"
 
 
 class SessionStore:
@@ -92,6 +115,9 @@ def public_state() -> dict:
     payload["presentation"] = presentation_payload(
         store.session.record,
         store.session.profile_theme,
+        store.session.accent_color,
+        store.session.font_style,
+        store.session.layout_density,
     )
     payload["themes"] = theme_catalog()
     return payload
@@ -154,11 +180,52 @@ def select_theme(request: ThemeSelectionRequest) -> JSONResponse:
     return JSONResponse(public_state())
 
 
+@app.put("/api/preferences")
+def update_preferences(request: PreferencesRequest) -> JSONResponse:
+    metadata = store.session.record.profile_metadata.model_copy(
+        update={
+            "audience": request.audience or None,
+            "occasion": request.occasion or None,
+            "purpose": request.purpose or None,
+            "tone": request.tone or None,
+            "visual_preferences": request.visual_preferences or None,
+            "privacy_restrictions": request.privacy_restrictions or None,
+            "language": store.session.record.profile_metadata.language or "English",
+            "output_type": store.session.record.profile_metadata.output_type or "One-page personal profile",
+            "output_size": store.session.record.profile_metadata.output_size or "US Letter, one page",
+        }
+    )
+    try:
+        config = ProfileConfig(
+            profile_metadata=metadata,
+            profile=EditableProfile(
+                name=request.name,
+                role=request.role,
+                introduction=request.introduction,
+            ),
+            design=DesignPreferences(
+                theme=request.theme,
+                accent_color=request.accent_color,
+                font_style=request.font_style,
+                layout_density=request.layout_density,
+            ),
+        )
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    with store.lock:
+        apply_profile_config(store.session, config, "Web customization form")
+        store.save()
+    return JSONResponse(public_state())
+
+
 @app.post("/api/upload")
 async def upload(files: list[UploadFile] = File(...)) -> JSONResponse:
     if len(files) > 8:
         raise HTTPException(status_code=400, detail="Upload at most 8 files at a time.")
     accepted: list[str] = []
+    configured: list[str] = []
+    bundle = ""
+    configs: list[tuple[str, ProfileConfig]] = []
     with tempfile.TemporaryDirectory(prefix="profilekit-upload-") as directory:
         paths: list[Path] = []
         for upload_file in files:
@@ -168,15 +235,27 @@ async def upload(files: list[UploadFile] = File(...)) -> JSONResponse:
                 raise HTTPException(status_code=413, detail=f"{safe_name} exceeds the 5 MB limit.")
             path = Path(directory) / safe_name
             path.write_bytes(data)
-            paths.append(path)
+            if safe_name.lower() == "default_config.json":
+                try:
+                    configs.append((safe_name, load_profile_config(path)))
+                except ValueError as error:
+                    raise HTTPException(status_code=400, detail=str(error)) from error
+                configured.append(safe_name)
+            else:
+                paths.append(path)
             accepted.append(safe_name)
         try:
-            bundle = build_source_bundle(paths)
+            bundle = build_source_bundle(paths) if paths else ""
         except SourceError as error:
             raise HTTPException(status_code=400, detail=str(error)) from error
     with store.lock:
-        store.pending_sources.append(bundle)
-    return JSONResponse({"accepted": accepted, "session": public_state()})
+        for filename, config in configs:
+            apply_profile_config(store.session, config, filename, replace_record=True)
+        if bundle:
+            store.pending_sources.append(bundle)
+        if configs:
+            store.save()
+    return JSONResponse({"accepted": accepted, "configured": configured, "session": public_state()})
 
 
 @app.patch("/api/items/{item_index}")
@@ -232,7 +311,13 @@ def export_session() -> JSONResponse:
 def export_profile_pdf() -> Response:
     if not store.session.record.items:
         raise HTTPException(status_code=400, detail="Add or load profile content before exporting a PDF.")
-    pdf = build_profile_pdf(store.session.record, store.session.profile_theme)
+    pdf = build_profile_pdf(
+        store.session.record,
+        store.session.profile_theme,
+        store.session.accent_color,
+        store.session.font_style,
+        store.session.layout_density,
+    )
     return Response(
         content=pdf,
         media_type="application/pdf",

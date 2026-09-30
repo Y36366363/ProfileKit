@@ -72,6 +72,12 @@ topics include tone, size/output format, prohibited information, approved
 contact methods and links, photo/logo/project restrictions, accessibility
 requirements, and language. Do not send a full questionnaire at once.
 
+When the runtime supplies `current_design_preferences`, treat those settings as
+explicit user preferences. Use them when proposing wording, information
+hierarchy, and visual direction. Explain any adjustment needed for readability,
+accessibility, audience fit, or the one-page limit, but do not silently replace
+the user's choices.
+
 ## Evidence and status rules
 
 Every proposed content item must have exactly one status:

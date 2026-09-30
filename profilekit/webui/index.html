@@ -25,6 +25,7 @@
         <span id="runtimeLabel">Checking the local runtime</span>
       </div>
       <div class="top-actions">
+        <button class="button ghost" id="customizeButton" type="button">Customize</button>
         <button class="button ghost" id="demoButton" type="button">Load demo</button>
         <button class="button ghost danger" id="resetButton" type="button">New session</button>
       </div>
@@ -60,7 +61,7 @@
           <div class="upload-icon" aria-hidden="true">＋</div>
           <div>
             <strong>Drop or choose source files</strong>
-            <span>PDF, DOCX, text, or images · 5 MB per file</span>
+            <span>Resume DOCX, PDF, text, images, or default_config.json · 5 MB each</span>
           </div>
           <button class="button compact" id="chooseFiles" type="button">Choose files</button>
         </div>
@@ -114,6 +115,38 @@
         </div>
       </aside>
     </main>
+
+    <dialog class="customize-dialog" id="customizeDialog" aria-labelledby="customizeTitle">
+      <form id="preferencesForm">
+        <div class="dialog-heading">
+          <div>
+            <p class="eyebrow">Direct setup</p>
+            <h2 id="customizeTitle">Content and design preferences</h2>
+          </div>
+          <button class="dialog-close" id="closeCustomize" type="button" aria-label="Close customization">×</button>
+        </div>
+        <p class="dialog-intro">Set core information directly, then use the agent to refine wording from your uploaded sources.</p>
+        <div class="form-grid">
+          <label>Name<input id="prefName" maxlength="120" placeholder="Preferred public name" /></label>
+          <label>Current role<input id="prefRole" maxlength="180" placeholder="Student, researcher, designer…" /></label>
+          <label class="wide">Short introduction<textarea id="prefIntroduction" rows="3" maxlength="1200" placeholder="A concise, factual introduction"></textarea></label>
+          <label>Audience<input id="prefAudience" maxlength="300" placeholder="Faculty and classmates" /></label>
+          <label>Occasion<input id="prefOccasion" maxlength="300" placeholder="Course showcase" /></label>
+          <label class="wide">Purpose<input id="prefPurpose" maxlength="500" placeholder="What should the audience understand?" /></label>
+          <label>Tone<input id="prefTone" maxlength="200" placeholder="Professional and approachable" /></label>
+          <label>Theme<select id="prefTheme"><option value="academic">Academic</option><option value="modern">Modern</option><option value="minimal">Minimal</option></select></label>
+          <label>Accent color<input id="prefAccent" type="color" value="#147d70" /></label>
+          <label>Typography<select id="prefFont"><option value="hybrid">Hybrid</option><option value="sans">Sans serif</option><option value="serif">Serif</option></select></label>
+          <label>Layout density<select id="prefDensity"><option value="balanced">Balanced</option><option value="compact">Compact</option><option value="airy">Airy</option></select></label>
+          <label class="wide">Visual preferences<input id="prefVisual" maxlength="500" placeholder="Colors, hierarchy, visual tone, or constraints" /></label>
+          <label class="wide">Information to exclude<input id="prefPrivacy" maxlength="500" placeholder="Home address, phone number, restricted project details…" /></label>
+        </div>
+        <div class="dialog-actions">
+          <span>Saved locally in the private ProfileKit session.</span>
+          <button class="button primary" id="savePreferences" type="submit">Apply preferences</button>
+        </div>
+      </form>
+    </dialog>
 
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="/assets/app.js" defer></script>

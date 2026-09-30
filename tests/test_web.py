@@ -7,6 +7,7 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from pypdf import PdfReader
+from docx import Document
 
 from profilekit.models import ProfileSession
 from profilekit.web import SessionStore, app
@@ -114,6 +115,82 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["accepted"], ["notes.txt"])
         self.assertEqual(response.json()["session"]["pending_source_count"], 1)
+
+    def test_docx_resume_upload_is_queued_for_agent_review(self):
+        buffer = BytesIO()
+        document = Document()
+        document.add_heading("Jordan Rivera", level=1)
+        document.add_paragraph("Graduate student in information science")
+        document.add_paragraph("Project: evaluated a library search prototype")
+        document.save(buffer)
+        response = self.client.post(
+            "/api/upload",
+            files={
+                "files": (
+                    "resume.docx",
+                    buffer.getvalue(),
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["accepted"], ["resume.docx"])
+        self.assertEqual(response.json()["session"]["pending_source_count"], 1)
+
+    def test_default_config_upload_applies_profile_without_model_call(self):
+        self.client.post("/api/demo")
+        config = {
+            "profile_metadata": {"audience": "Course faculty", "purpose": "Project showcase"},
+            "profile": {
+                "name": "Jordan Rivera",
+                "role": "Information science student",
+                "introduction": "Studies accessible information systems.",
+            },
+            "items": [],
+            "design": {
+                "theme": "minimal",
+                "accent_color": "#336699",
+                "font_style": "sans",
+                "layout_density": "airy",
+            },
+        }
+        response = self.client.post(
+            "/api/upload",
+            files={"files": ("default_config.json", __import__("json").dumps(config), "application/json")},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["configured"], ["default_config.json"])
+        self.assertEqual(payload["session"]["presentation"]["title"], "Jordan Rivera")
+        self.assertEqual(payload["session"]["profile_theme"], "minimal")
+        self.assertEqual(payload["session"]["accent_color"], "#336699")
+        self.assertEqual(payload["session"]["pending_source_count"], 0)
+        self.assertNotIn("lin.chen@example.edu", str(payload["session"]))
+
+    def test_preferences_form_updates_content_and_design(self):
+        response = self.client.put(
+            "/api/preferences",
+            json={
+                "name": "Avery Kim",
+                "role": "UX research student",
+                "introduction": "Explores understandable public services.",
+                "audience": "Faculty reviewers",
+                "occasion": "Course showcase",
+                "purpose": "Present one research project",
+                "tone": "Clear and modest",
+                "visual_preferences": "Warm accent and spacious layout",
+                "privacy_restrictions": "No phone number",
+                "theme": "modern",
+                "accent_color": "#A34F2A",
+                "font_style": "sans",
+                "layout_density": "airy",
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["presentation"]["title"], "Avery Kim")
+        self.assertEqual(payload["presentation"]["accent_color"], "#A34F2A")
+        self.assertEqual(payload["record"]["profile_metadata"]["audience"], "Faculty reviewers")
 
 
 if __name__ == "__main__":

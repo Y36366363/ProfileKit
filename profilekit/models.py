@@ -107,6 +107,9 @@ class ProfileSession(BaseModel):
     model_provider: Literal["deepseek", "openai"] = "deepseek"
     model_name: str = "deepseek-flash"
     profile_theme: Literal["academic", "modern", "minimal"] = "academic"
+    accent_color: str = "#147D70"
+    font_style: Literal["serif", "sans", "hybrid"] = "hybrid"
+    layout_density: Literal["compact", "balanced", "airy"] = "balanced"
     record: ProfileRecord = Field(default_factory=ProfileRecord)
     transcript: list[TranscriptMessage] = Field(default_factory=list)
     audit_log: list[str] = Field(default_factory=list)

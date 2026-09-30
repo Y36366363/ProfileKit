@@ -53,9 +53,30 @@ def build_demo_session() -> ProfileSession:
             ProfileItem(
                 category="project",
                 label="Class project",
-                value="Supported interview coding and summarized recurring themes for a course study.",
+                value="Designed an interview-coding workflow, organized recurring themes, and presented a concise evidence summary for a course research study.",
                 status=ItemStatus.SUGGESTED_WORDING,
                 source="Demo project notes",
+            ),
+            ProfileItem(
+                category="education",
+                label="Education",
+                value="M.S. student in Information Science, Example University, expected 2027",
+                status=ItemStatus.CONFIRMED,
+                source="Demo resume",
+            ),
+            ProfileItem(
+                category="skills",
+                label="Methods",
+                value="Qualitative coding, usability testing, information organization, and research synthesis",
+                status=ItemStatus.CONFIRMED,
+                source="Demo resume and course notes",
+            ),
+            ProfileItem(
+                category="experience",
+                label="Selected experience",
+                value="Student research assistant supporting literature review, participant coordination, and thematic analysis.",
+                status=ItemStatus.SUGGESTED_WORDING,
+                source="Demo resume",
             ),
             ProfileItem(
                 category="contact",
@@ -91,6 +112,10 @@ def build_demo_session() -> ProfileSession:
         stage=WorkflowStage.PROFILE_RECORD,
         model_provider="deepseek",
         model_name="deepseek-flash",
+        profile_theme="modern",
+        accent_color="#5667D8",
+        font_style="hybrid",
+        layout_density="balanced",
         record=record,
         transcript=[
             TranscriptMessage(

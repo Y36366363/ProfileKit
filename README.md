@@ -68,14 +68,27 @@ source .venv/bin/activate
 profilekit-web
 ```
 
+Before class, run the offline safety check:
+
+```bash
+python -m profilekit.preflight
+```
+
+It checks the local configuration, provider readiness, web assets, one-page PDF
+generation, and privacy filtering without displaying any API key.
+
 It opens `http://127.0.0.1:8765` and provides:
 
 - an 11-stage workflow visualization;
 - an English-first interface and model selector;
 - conversational intake and source review;
 - drag-and-drop source uploads;
+- direct extraction from resume or profile DOCX files;
+- immediate setup from `default_config.json` without an API call;
 - a live Personal Profile Record with item-level privacy decisions;
 - a matching one-page preview with Academic, Modern, and Minimal themes;
+- a customization panel for core profile content, audience, purpose, tone, color,
+  typography, density, and privacy restrictions;
 - a single-page PDF export that omits restricted and unconfirmed sensitive items;
 - a fictional, one-click classroom demonstration scenario; and
 - local JSON export for inspecting the agent state.
@@ -84,6 +97,13 @@ Use `profilekit-web --no-browser` when you do not want it to open a browser
 automatically. The web session is stored locally in
 `.profilekit/web-session.json`, ignored by Git, and written with user-only file
 permissions. API keys remain on the server and are never sent to the page.
+
+You can configure a profile in three complementary ways:
+
+1. Upload a resume or personal-information DOCX/PDF, then ask the agent to review it.
+2. Describe the content, audience, and preferences in the conversation.
+3. Edit `default_config.json` and upload that exact filename for deterministic setup,
+   then use the agent to refine the imported wording.
 
 Session data is saved locally to `.profilekit/session.json` by default. Do not
 commit that file; it can contain personal information. Choose a different path

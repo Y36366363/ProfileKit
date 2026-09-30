@@ -1,0 +1,51 @@
+{
+  "profile_metadata": {
+    "audience": "Course faculty and classmates",
+    "occasion": "In-class project demonstration",
+    "purpose": "Introduce my background and highlight one relevant project",
+    "output_type": "One-page personal profile",
+    "output_size": "US Letter, one page",
+    "tone": "Professional, clear, and approachable",
+    "language": "English",
+    "accessibility_requirements": "Readable on a classroom projector",
+    "visual_preferences": "Clean structure with a restrained blue accent",
+    "privacy_restrictions": "Exclude home address, phone number, and unapproved links"
+  },
+  "profile": {
+    "name": "Your Name",
+    "role": "Graduate student in information science",
+    "introduction": "Write a concise, evidence-based introduction here. The agent can refine this wording after reviewing your source materials."
+  },
+  "items": [
+    {
+      "category": "education",
+      "label": "Education",
+      "value": "Your degree, institution, and expected graduation date",
+      "status": "user_approved",
+      "source": "default_config.json",
+      "user_decision": "include"
+    },
+    {
+      "category": "project",
+      "label": "Featured project",
+      "value": "Describe your role, methods, and supported result without exaggeration",
+      "status": "user_approved",
+      "source": "default_config.json",
+      "user_decision": "include"
+    },
+    {
+      "category": "skills",
+      "label": "Skills and methods",
+      "value": "List only skills supported by your experience or source documents",
+      "status": "user_approved",
+      "source": "default_config.json",
+      "user_decision": "include"
+    }
+  ],
+  "design": {
+    "theme": "academic",
+    "accent_color": "#147D70",
+    "font_style": "hybrid",
+    "layout_density": "balanced"
+  }
+}

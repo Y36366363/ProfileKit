@@ -62,10 +62,16 @@ def _find_item(items: list[Any], *needles: str) -> Any | None:
     return None
 
 
-def presentation_payload(record: ProfileRecord, theme: str) -> dict[str, Any]:
+def presentation_payload(
+    record: ProfileRecord,
+    theme: str,
+    accent_color: str | None = None,
+    font_style: str = "hybrid",
+    layout_density: str = "balanced",
+) -> dict[str, Any]:
     visible = [item for item in record.items if _is_visible(item)]
     name_item = _find_item(visible, "preferred name", "full name", "name")
-    role_item = _find_item(visible, "current role", "role", "title")
+    role_item = _find_item(visible, "current role", "headline", "role", "title")
     intro_item = _find_item(visible, "introduction", "summary", "bio")
 
     featured_ids = {id(item) for item in (name_item, role_item, intro_item) if item}
@@ -87,6 +93,9 @@ def presentation_payload(record: ProfileRecord, theme: str) -> dict[str, Any]:
     metadata = record.profile_metadata
     return {
         "theme": theme if theme in THEMES else "academic",
+        "accent_color": accent_color or THEMES.get(theme, THEMES["academic"])["accent"],
+        "font_style": font_style,
+        "layout_density": layout_density,
         "title": name_item.value if name_item else "Your Name",
         "role": role_item.value if role_item else (metadata.output_type or "Personal Profile"),
         "introduction": intro_item.value if intro_item else (metadata.purpose or "Your approved introduction will appear here."),
@@ -103,10 +112,16 @@ def _paragraph(canvas: Canvas, text: str, style: ParagraphStyle, x: float, y: fl
     return y - height
 
 
-def build_profile_pdf(record: ProfileRecord, theme: str = "academic") -> bytes:
-    payload = presentation_payload(record, theme)
+def build_profile_pdf(
+    record: ProfileRecord,
+    theme: str = "academic",
+    accent_color: str | None = None,
+    font_style: str = "hybrid",
+    layout_density: str = "balanced",
+) -> bytes:
+    payload = presentation_payload(record, theme, accent_color, font_style, layout_density)
     colors = THEMES[payload["theme"]]
-    accent = HexColor(colors["accent"])
+    accent = HexColor(payload["accent_color"])
     dark = HexColor(colors["dark"])
     soft = HexColor(colors["soft"])
     buffer = BytesIO()
@@ -127,8 +142,8 @@ def build_profile_pdf(record: ProfileRecord, theme: str = "academic") -> bytes:
     accent_width = 0.15 * inch if payload["theme"] == "academic" else 0.28 * inch
     canvas.rect(0, height - header_height, accent_width, header_height, fill=1, stroke=0)
 
-    title_font = "Times-Bold" if payload["theme"] == "academic" else "Helvetica-Bold"
-    body_font = "Times-Roman" if payload["theme"] == "academic" else "Helvetica"
+    title_font = "Times-Bold" if payload["font_style"] in {"serif", "hybrid"} else "Helvetica-Bold"
+    body_font = "Times-Roman" if payload["font_style"] == "serif" else "Helvetica"
     canvas.setFillColor(white)
     canvas.setFont(title_font, 26 if len(payload["title"]) < 30 else 21)
     canvas.drawString(margin, height - 0.72 * inch, payload["title"][:80])
@@ -141,8 +156,9 @@ def build_profile_pdf(record: ProfileRecord, theme: str = "academic") -> bytes:
         canvas.drawString(margin, height - 1.30 * inch, payload["context"][:125])
 
     y = height - header_height - 0.38 * inch
+    density_scale = {"compact": 0.88, "balanced": 1.0, "airy": 1.08}[payload["layout_density"]]
     intro_style = ParagraphStyle(
-        "intro", fontName=body_font, fontSize=12.2, leading=17,
+        "intro", fontName=body_font, fontSize=12.2, leading=17 * density_scale,
         textColor=dark, alignment=TA_LEFT,
     )
     y = _paragraph(canvas, payload["introduction"], intro_style, margin, y, content_width)
@@ -157,7 +173,7 @@ def build_profile_pdf(record: ProfileRecord, theme: str = "academic") -> bytes:
         textColor=accent, spaceAfter=4,
     )
     item_style = ParagraphStyle(
-        "item", fontName=body_font, fontSize=9.5, leading=13, textColor=dark,
+        "item", fontName=body_font, fontSize=9.5, leading=13 * density_scale, textColor=dark,
     )
     label_style = ParagraphStyle(
         "label", fontName="Helvetica-Bold", fontSize=7.2, leading=9,

@@ -36,6 +36,12 @@ def _turn_input(session: ProfileSession, user_message: str) -> str:
         {
             "current_workflow_stage": session.stage.value,
             "current_profile_record": session.record.model_dump(mode="json"),
+            "current_design_preferences": {
+                "theme": session.profile_theme,
+                "accent_color": session.accent_color,
+                "font_style": session.font_style,
+                "layout_density": session.layout_density,
+            },
             "recent_transcript": recent,
             "latest_user_message": user_message,
             "controller_rules": [

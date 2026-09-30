@@ -26,6 +26,9 @@ const els = Object.fromEntries([
   "runtimeDot", "runtimeLabel", "chatForm", "messageInput", "sendButton", "dropzone",
   "fileInput", "chooseFiles", "sourceList", "demoButton", "resetButton", "toast", "modelSelect",
   "recordTab", "previewTab", "recordView", "previewView", "themeSelect", "profilePreview", "pdfButton"
+  , "customizeButton", "customizeDialog", "closeCustomize", "preferencesForm", "savePreferences",
+  "prefName", "prefRole", "prefIntroduction", "prefAudience", "prefOccasion", "prefPurpose", "prefTone",
+  "prefTheme", "prefAccent", "prefFont", "prefDensity", "prefVisual", "prefPrivacy"
 ].map(id => [id, document.getElementById(id)]));
 
 let current = null;
@@ -122,6 +125,9 @@ function renderPreview(state) {
     </section>
   `).join("");
   els.profilePreview.className = `profile-page theme-${profile.theme || "academic"}`;
+  els.profilePreview.style.setProperty("--profile-accent", profile.accent_color || "#147d70");
+  els.profilePreview.dataset.font = profile.font_style || "hybrid";
+  els.profilePreview.dataset.density = profile.layout_density || "balanced";
   els.profilePreview.innerHTML = `
     <header class="profile-header">
       <p class="profile-kicker">One-page profile</p>
@@ -204,8 +210,12 @@ async function uploadFiles(files) {
   els.sourceList.textContent = "Reading the selected sources…";
   try {
     const data = await api("/api/upload", {method: "POST", body: form});
-    els.sourceList.textContent = `Ready: ${data.accepted.join(", ")}. The sources will enter review with your next message.`;
+    const configured = data.configured || [];
+    els.sourceList.textContent = configured.length
+      ? `Applied ${configured.join(", ")}. Other sources will enter review with your next message.`
+      : `Ready: ${data.accepted.join(", ")}. The sources will enter review with your next message.`;
     current = data.session;
+    render(data.session);
   } catch (error) {
     els.sourceList.textContent = "";
     showToast(error.message, true);
@@ -302,6 +312,59 @@ els.pdfButton.addEventListener("click", event => {
   if (els.pdfButton.classList.contains("disabled")) {
     event.preventDefault();
     showToast("Add or load profile content before exporting a PDF.", true);
+  }
+});
+
+function itemValue(label) {
+  return (current?.record?.items || []).find(item => item.label.toLowerCase() === label.toLowerCase())?.value || "";
+}
+
+function openPreferences() {
+  const metadata = current?.record?.profile_metadata || {};
+  els.prefName.value = itemValue("Preferred name");
+  els.prefRole.value = itemValue("Current role");
+  els.prefIntroduction.value = itemValue("Short introduction");
+  els.prefAudience.value = metadata.audience || "";
+  els.prefOccasion.value = metadata.occasion || "";
+  els.prefPurpose.value = metadata.purpose || "";
+  els.prefTone.value = metadata.tone || "";
+  els.prefTheme.value = current?.profile_theme || "academic";
+  els.prefAccent.value = current?.accent_color || "#147d70";
+  els.prefFont.value = current?.font_style || "hybrid";
+  els.prefDensity.value = current?.layout_density || "balanced";
+  els.prefVisual.value = metadata.visual_preferences || "";
+  els.prefPrivacy.value = metadata.privacy_restrictions || "";
+  els.customizeDialog.showModal();
+}
+
+els.customizeButton.addEventListener("click", openPreferences);
+els.closeCustomize.addEventListener("click", () => els.customizeDialog.close());
+els.customizeDialog.addEventListener("click", event => {
+  if (event.target === els.customizeDialog) els.customizeDialog.close();
+});
+
+els.preferencesForm.addEventListener("submit", async event => {
+  event.preventDefault();
+  els.savePreferences.disabled = true;
+  const payload = {
+    name: els.prefName.value.trim(), role: els.prefRole.value.trim(),
+    introduction: els.prefIntroduction.value.trim(), audience: els.prefAudience.value.trim(),
+    occasion: els.prefOccasion.value.trim(), purpose: els.prefPurpose.value.trim(), tone: els.prefTone.value.trim(),
+    theme: els.prefTheme.value, accent_color: els.prefAccent.value,
+    font_style: els.prefFont.value, layout_density: els.prefDensity.value,
+    visual_preferences: els.prefVisual.value.trim(), privacy_restrictions: els.prefPrivacy.value.trim(),
+  };
+  try {
+    render(await api("/api/preferences", {
+      method: "PUT", headers: {"Content-Type": "application/json"}, body: JSON.stringify(payload),
+    }));
+    els.customizeDialog.close();
+    selectView("preview");
+    showToast("Content and design preferences were applied.");
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    els.savePreferences.disabled = false;
   }
 });
 

@@ -21,6 +21,7 @@ dependencies = [
 [project.scripts]
 profilekit = "profilekit.cli:main"
 profilekit-web = "profilekit.web:main"
+profilekit-preflight = "profilekit.preflight:main"
 
 [tool.setuptools.packages.find]
 include = ["profilekit*"]
