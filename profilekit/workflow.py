@@ -55,7 +55,12 @@ def validate_transition(current: WorkflowStage, proposed: WorkflowStage, approva
         )
 
 
-def apply_turn(session: ProfileSession, user_message: str, turn: AgentTurn) -> ProfileSession:
+def apply_turn(
+    session: ProfileSession,
+    user_message: str,
+    turn: AgentTurn,
+    transcript_user_message: str | None = None,
+) -> ProfileSession:
     validate_transition(session.stage, turn.proposed_stage, turn.approval_evidence)
     if turn.proposed_stage == WorkflowStage.DRAFT:
         candidate = session.model_copy(deep=True)
@@ -66,7 +71,7 @@ def apply_turn(session: ProfileSession, user_message: str, turn: AgentTurn) -> P
     session.record = turn.record
     session.transcript.extend(
         [
-            TranscriptMessage(role="user", content=user_message),
+            TranscriptMessage(role="user", content=transcript_user_message or user_message),
             TranscriptMessage(role="assistant", content=turn.assistant_message),
         ]
     )

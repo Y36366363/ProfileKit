@@ -9,7 +9,7 @@ from fastapi.testclient import TestClient
 from pypdf import PdfReader
 from docx import Document
 
-from profilekit.models import ProfileSession
+from profilekit.models import AgentTurn, ProfileRecord, ProfileSession, WorkflowStage
 from profilekit.web import SessionStore, app
 import profilekit.web as web_module
 
@@ -136,6 +136,44 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["accepted"], ["resume.docx"])
         self.assertEqual(response.json()["session"]["pending_source_count"], 1)
+
+    def test_uploaded_source_is_hidden_from_the_visible_transcript(self):
+        secret_source = "Private source phone 585-483-4876 and test@example.edu"
+        self.client.post(
+            "/api/upload",
+            files={"files": ("private.txt", secret_source, "text/plain")},
+        )
+
+        calls = []
+
+        def fake_turn(session, user_message, provider, model, transcript_user_message=None):
+            calls.append(user_message)
+            self.assertIn(secret_source, user_message)
+            self.assertNotIn(secret_source, transcript_user_message)
+            turn = AgentTurn(
+                assistant_message="Contact details: 585-483-4876 and test@example.edu",
+                proposed_stage=WorkflowStage.SOURCE_REVIEW,
+                record=ProfileRecord(),
+            )
+            from profilekit.workflow import apply_turn
+
+            updated = apply_turn(session, user_message, turn, transcript_user_message)
+            return updated, turn.assistant_message
+
+        with patch("profilekit.web.run_turn", side_effect=fake_turn):
+            response = self.client.post("/api/chat", json={"message": "Review my file."})
+            follow_up = self.client.post("/api/chat", json={"message": "Continue the review."})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(follow_up.status_code, 200)
+        self.assertEqual(len(calls), 2)
+        visible = str(follow_up.json()["session"]["transcript"])
+        self.assertNotIn(secret_source, visible)
+        self.assertNotIn("585-483-4876", visible)
+        self.assertNotIn("test@example.edu", visible)
+        self.assertIn("privately reviewed 1 uploaded file", visible)
+        self.assertIn("[phone withheld]", visible)
+        self.assertIn("[email withheld]", visible)
 
     def test_default_config_upload_applies_profile_without_model_call(self):
         self.client.post("/api/demo")

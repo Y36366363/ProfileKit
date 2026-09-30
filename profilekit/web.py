@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import tempfile
 import threading
 import webbrowser
@@ -75,6 +76,7 @@ class SessionStore:
         self.lock = threading.Lock()
         self.session = self._load()
         self.pending_sources: list[str] = []
+        self.private_sources: list[str] = []
 
     def _load(self) -> ProfileSession:
         if not self.path.exists():
@@ -93,6 +95,23 @@ class SessionStore:
 
 store = SessionStore(SESSION_PATH)
 app = FastAPI(title="ProfileKit", docs_url=None, redoc_url=None)
+
+
+DISPLAY_REDACTIONS = (
+    (re.compile(r"\b[^\s@]+@[^\s@]+\b"), "[email withheld]"),
+    (
+        re.compile(r"(?<!\w)(?:\+?1[\s.-]?)?(?:\(?\d{3}\)?[\s.-])\d{3}[\s.-]\d{4}(?!\w)"),
+        "[phone withheld]",
+    ),
+    (re.compile(r"\b(?:https?://|www\.)\S+", re.IGNORECASE), "[link withheld]"),
+    (re.compile(r"\b(?:github|linkedin)\.com/\S+", re.IGNORECASE), "[link withheld]"),
+)
+
+
+def redact_sensitive_display(text: str) -> str:
+    for pattern, replacement in DISPLAY_REDACTIONS:
+        text = pattern.sub(replacement, text)
+    return text
 
 
 def public_state() -> dict:
@@ -131,22 +150,36 @@ def get_session() -> JSONResponse:
 @app.post("/api/chat")
 def chat(request: ChatRequest) -> JSONResponse:
     with store.lock:
-        message = request.message.strip()
+        display_message = request.message.strip()
+        message = display_message
+        private_source_count = 0
+        if store.private_sources:
+            message += "\n\n" + "\n\n---\n\n".join(store.private_sources)
         if store.pending_sources:
-            message += "\n\n" + "\n\n---\n\n".join(store.pending_sources)
+            private_source_count = sum(source.count("SOURCE:") for source in store.pending_sources)
             store.pending_sources.clear()
+        if private_source_count:
+            noun = "file" if private_source_count == 1 else "files"
+            display_message += (
+                f"\n\n[ProfileKit privately reviewed {private_source_count} uploaded {noun}. "
+                "Source text is hidden from the on-screen conversation.]"
+            )
         try:
             store.session, reply = run_turn(
                 store.session,
                 message,
                 store.session.model_provider,
                 store.session.model_name,
+                transcript_user_message=display_message,
             )
         except Exception as error:
             raise HTTPException(
                 status_code=422,
                 detail=f"ProfileKit kept the current workflow stage: {error}",
             ) from error
+        reply = redact_sensitive_display(reply)
+        if store.session.transcript and store.session.transcript[-1].role == "assistant":
+            store.session.transcript[-1].content = reply
         store.save()
     return JSONResponse({"reply": reply, "session": public_state()})
 
@@ -253,6 +286,7 @@ async def upload(files: list[UploadFile] = File(...)) -> JSONResponse:
             apply_profile_config(store.session, config, filename, replace_record=True)
         if bundle:
             store.pending_sources.append(bundle)
+            store.private_sources.append(bundle)
         if configs:
             store.save()
     return JSONResponse({"accepted": accepted, "configured": configured, "session": public_state()})
@@ -285,6 +319,7 @@ def load_demo() -> JSONResponse:
         store.session.model_provider = provider
         store.session.model_name = model
         store.pending_sources.clear()
+        store.private_sources.clear()
         store.save()
     return JSONResponse(public_state())
 
@@ -296,6 +331,7 @@ def reset_session() -> JSONResponse:
         model = store.session.model_name
         store.session = ProfileSession(model_provider=provider, model_name=model)
         store.pending_sources.clear()
+        store.private_sources.clear()
         store.save()
     return JSONResponse(public_state())
 

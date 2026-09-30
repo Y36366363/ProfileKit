@@ -97,6 +97,11 @@ Use `profilekit-web --no-browser` when you do not want it to open a browser
 automatically. The web session is stored locally in
 `.profilekit/web-session.json`, ignored by Git, and written with user-only file
 permissions. API keys remain on the server and are never sent to the page.
+Extracted upload text is sent to the selected model provider when the user asks
+the agent to review it, but it is hidden from the visible browser transcript.
+The private source context stays only in server memory for the current run so
+later agent turns can refine the record; Reset, Load demo, or restarting the
+server clears it.
 
 You can configure a profile in three complementary ways:
 

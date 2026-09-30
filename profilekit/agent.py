@@ -90,6 +90,7 @@ def run_turn(
     user_message: str,
     provider: str | None = None,
     model: str | None = None,
+    transcript_user_message: str | None = None,
 ) -> tuple[ProfileSession, str]:
     selected_provider = provider or session.model_provider
     selected_model = model or session.model_name
@@ -104,7 +105,7 @@ def run_turn(
         if not isinstance(turn, AgentTurn):
             turn = AgentTurn.model_validate(turn)
     try:
-        updated = apply_turn(session, user_message, turn)
+        updated = apply_turn(session, user_message, turn, transcript_user_message)
     except InvalidTransition as error:
         # Preserve privacy and approval invariants even if a model proposes a skip.
         session.audit_log.append(f"blocked transition: {error}")
