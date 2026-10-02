@@ -86,11 +86,13 @@ It opens `http://127.0.0.1:8765` and provides:
 - direct extraction from resume or profile DOCX files;
 - immediate setup from `default_config.json` without an API call;
 - a live Personal Profile Record with item-level privacy decisions;
-- a matching one-page preview with Academic, Modern, and Minimal themes;
+- a matching one-page preview with six themes: Academic, Modern, Minimal,
+  Sunrise, Studio, and Editorial;
 - a customization panel for core profile content, audience, purpose, tone, color,
   typography, density, and privacy restrictions;
 - a single-page PDF export that omits restricted and unconfirmed sensitive items;
-- a fictional, one-click classroom demonstration scenario; and
+- three fictional classroom demonstrations (research, student developer,
+  and student designer) selected beside **Load demo**; and
 - local JSON export for inspecting the agent state.
 
 Use `profilekit-web --no-browser` when you do not want it to open a browser
@@ -102,6 +104,23 @@ the agent to review it, but it is hidden from the visible browser transcript.
 The private source context stays only in server memory for the current run so
 later agent turns can refine the record; Reset, Load demo, or restarting the
 server clears it.
+
+For a quick style comparison, load any fictional example, choose a template in
+the preview, then use **Customize** to tune its accent color, typography, and
+density. Template changes set a readable default accent; a later manual color
+choice overrides it. Long content can exceed a single page: the preview warns
+when crowded, and the PDF footer states when entries were shortened.
+
+Run `python -m profilekit.preflight` to check every example against all six
+PDF themes without an API call. Run `python scripts/build_demo_gallery.py` to
+regenerate the three fictional sample PDFs in `output/pdf/`.
+
+The template direction was informed by [Reactive Resume's content-first design
+notes](https://github.com/reactive-resume/reactive-resume/blob/main/DESIGN.md),
+[JSON Resume's separation of data and themes](https://github.com/jsonresume/resume-cli/blob/master/README.md),
+and [CMU's viewer-friendly poster guidance](https://www.cmu.edu/student-success/other-resources/handouts/comm-supp-pdfs/designing-viewer-friendly-poster.pdf).
+ProfileKit's layouts and implementation are original; no third-party template
+assets are bundled.
 
 You can configure a profile in three complementary ways:
 

@@ -26,6 +26,12 @@
       </div>
       <div class="top-actions">
         <button class="button ghost" id="customizeButton" type="button">Customize</button>
+        <label class="sr-only" for="demoScenario">Demo scenario</label>
+        <select id="demoScenario" aria-label="Choose a fictional demo scenario">
+          <option value="research">Research student</option>
+          <option value="technology">Student developer</option>
+          <option value="creative">Student designer</option>
+        </select>
         <button class="button ghost" id="demoButton" type="button">Load demo</button>
         <button class="button ghost danger" id="resetButton" type="button">New session</button>
       </div>
@@ -111,7 +117,7 @@
           <div class="page-stage">
             <article class="profile-page theme-academic" id="profilePreview" aria-label="Live one-page profile preview"></article>
           </div>
-          <p class="preview-note">The preview updates automatically. Restricted and unconfirmed sensitive items stay out of the public page.</p>
+          <p class="preview-note" id="previewNote">The preview updates automatically. Restricted and unconfirmed sensitive items stay out of the public page.</p>
         </div>
       </aside>
     </main>
@@ -134,7 +140,7 @@
           <label>Occasion<input id="prefOccasion" maxlength="300" placeholder="Course showcase" /></label>
           <label class="wide">Purpose<input id="prefPurpose" maxlength="500" placeholder="What should the audience understand?" /></label>
           <label>Tone<input id="prefTone" maxlength="200" placeholder="Professional and approachable" /></label>
-          <label>Theme<select id="prefTheme"><option value="academic">Academic</option><option value="modern">Modern</option><option value="minimal">Minimal</option></select></label>
+          <label>Theme<select id="prefTheme"><option value="academic">Academic</option><option value="modern">Modern</option><option value="minimal">Minimal</option><option value="sunrise">Sunrise</option><option value="studio">Studio</option><option value="editorial">Editorial</option></select></label>
           <label>Accent color<input id="prefAccent" type="color" value="#147d70" /></label>
           <label>Typography<select id="prefFont"><option value="hybrid">Hybrid</option><option value="sans">Sans serif</option><option value="serif">Serif</option></select></label>
           <label>Layout density<select id="prefDensity"><option value="balanced">Balanced</option><option value="compact">Compact</option><option value="airy">Airy</option></select></label>

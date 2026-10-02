@@ -106,7 +106,7 @@ class ProfileSession(BaseModel):
     stage: WorkflowStage = WorkflowStage.INTAKE
     model_provider: Literal["deepseek", "openai"] = "deepseek"
     model_name: str = "deepseek-flash"
-    profile_theme: Literal["academic", "modern", "minimal"] = "academic"
+    profile_theme: Literal["academic", "modern", "minimal", "sunrise", "studio", "editorial"] = "academic"
     accent_color: str = "#147D70"
     font_style: Literal["serif", "sans", "hybrid"] = "hybrid"
     layout_density: Literal["compact", "balanced", "airy"] = "balanced"

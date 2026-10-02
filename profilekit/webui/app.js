@@ -24,8 +24,8 @@ const statusLabels = {
 const els = Object.fromEntries([
   "workflowSteps", "stageBadge", "messages", "recordSummary", "recordItems", "recordEmpty",
   "runtimeDot", "runtimeLabel", "chatForm", "messageInput", "sendButton", "dropzone",
-  "fileInput", "chooseFiles", "sourceList", "demoButton", "resetButton", "toast", "modelSelect",
-  "recordTab", "previewTab", "recordView", "previewView", "themeSelect", "profilePreview", "pdfButton"
+  "fileInput", "chooseFiles", "sourceList", "demoScenario", "demoButton", "resetButton", "toast", "modelSelect",
+  "recordTab", "previewTab", "recordView", "previewView", "themeSelect", "profilePreview", "previewNote", "pdfButton"
   , "customizeButton", "customizeDialog", "closeCustomize", "preferencesForm", "savePreferences",
   "prefName", "prefRole", "prefIntroduction", "prefAudience", "prefOccasion", "prefPurpose", "prefTone",
   "prefTheme", "prefAccent", "prefFont", "prefDensity", "prefVisual", "prefPrivacy"
@@ -141,6 +141,13 @@ function renderPreview(state) {
     </div>
     <footer>ProfileKit · privacy-reviewed profile <span>1 / 1</span></footer>
   `;
+  requestAnimationFrame(() => {
+    const body = els.profilePreview.querySelector(".profile-body");
+    const crowded = body && body.scrollHeight > body.clientHeight + 1;
+    els.previewNote.textContent = crowded
+      ? "This page is crowded. Choose Compact density, shorten entries, or export the PDF to check its one-page fit."
+      : "The preview updates automatically. Restricted and unconfirmed sensitive items stay out of the public page.";
+  });
   const empty = !(state.record?.items || []).length;
   els.pdfButton.classList.toggle("disabled", empty);
   els.pdfButton.setAttribute("aria-disabled", empty.toString());
@@ -249,7 +256,7 @@ els.recordItems.addEventListener("click", async event => {
 });
 
 els.demoButton.addEventListener("click", async () => {
-  render(await api("/api/demo", {method: "POST"}));
+  render(await api(`/api/demo?scenario=${encodeURIComponent(els.demoScenario.value)}`, {method: "POST"}));
   showToast("The fictional demo case is ready.");
 });
 

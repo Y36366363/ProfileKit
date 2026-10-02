@@ -9,7 +9,8 @@ from fastapi.testclient import TestClient
 from pypdf import PdfReader
 from docx import Document
 
-from profilekit.models import AgentTurn, ProfileRecord, ProfileSession, WorkflowStage
+from profilekit.models import AgentTurn, ItemStatus, ProfileItem, ProfileRecord, ProfileSession, WorkflowStage
+from profilekit.profile_document import build_profile_pdf
 from profilekit.web import SessionStore, app
 import profilekit.web as web_module
 
@@ -78,6 +79,51 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(response.json()["presentation"]["theme"], "modern")
         saved = ProfileSession.model_validate_json(web_module.store.path.read_text())
         self.assertEqual(saved.profile_theme, "modern")
+
+    def test_all_demo_scenarios_export_one_page_with_matching_theme(self):
+        cases = (
+            ("research", "Lin Chen", "modern"),
+            ("technology", "Maya Patel", "studio"),
+            ("creative", "Alex Rivera", "sunrise"),
+        )
+        for scenario, name, theme in cases:
+            with self.subTest(scenario=scenario):
+                response = self.client.post(f"/api/demo?scenario={scenario}")
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.json()["presentation"]["title"], name)
+                self.assertEqual(response.json()["profile_theme"], theme)
+                pdf = self.client.get("/api/export/pdf")
+                self.assertEqual(pdf.status_code, 200)
+                reader = PdfReader(BytesIO(pdf.content))
+                self.assertEqual(len(reader.pages), 1)
+                self.assertIn(name, reader.pages[0].extract_text())
+
+    def test_all_theme_templates_export_and_switch_default_accent(self):
+        self.client.post("/api/demo")
+        for theme in ("academic", "modern", "minimal", "sunrise", "studio", "editorial"):
+            with self.subTest(theme=theme):
+                selected = self.client.patch("/api/theme", json={"theme": theme})
+                self.assertEqual(selected.status_code, 200)
+                self.assertEqual(selected.json()["presentation"]["theme"], theme)
+                self.assertEqual(selected.json()["presentation"]["accent_color"],
+                                 next(item["accent"] for item in selected.json()["themes"] if item["id"] == theme))
+                self.assertEqual(len(PdfReader(BytesIO(self.client.get("/api/export/pdf").content)).pages), 1)
+
+    def test_unknown_demo_scenario_is_rejected(self):
+        self.assertEqual(self.client.post("/api/demo?scenario=unknown").status_code, 422)
+
+    def test_dense_pdf_discloses_shortened_content(self):
+        self.client.post("/api/demo")
+        record = web_module.store.session.record.model_copy(deep=True)
+        record.items.extend(
+            ProfileItem(category=f"extra_{index}", label=f"Extra {index}",
+                        value="Additional approved classroom detail.", status=ItemStatus.CONFIRMED,
+                        source="Demo notes")
+            for index in range(10)
+        )
+        pdf = build_profile_pdf(record)
+        text = PdfReader(BytesIO(pdf)).pages[0].extract_text()
+        self.assertIn("CONTENT SHORTENED TO FIT ONE PAGE", text)
 
     def test_pdf_export_is_one_page_and_omits_unconfirmed_email(self):
         self.client.post("/api/demo")

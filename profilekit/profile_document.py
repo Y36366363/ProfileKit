@@ -38,6 +38,27 @@ THEMES: dict[str, dict[str, str]] = {
         "dark": "#1F2528",
         "soft": "#F1F3F2",
     },
+    "sunrise": {
+        "label": "Sunrise",
+        "description": "Warm coral energy for events and creative introductions",
+        "accent": "#D94F44",
+        "dark": "#462A44",
+        "soft": "#FFF0E8",
+    },
+    "studio": {
+        "label": "Studio",
+        "description": "Violet and turquoise geometry for a vivid showcase",
+        "accent": "#6557CF",
+        "dark": "#211D4A",
+        "soft": "#F0EEFF",
+    },
+    "editorial": {
+        "label": "Editorial",
+        "description": "Cream paper and serif typography for a polished story",
+        "accent": "#A23D54",
+        "dark": "#352638",
+        "soft": "#F8F0E9",
+    },
 }
 
 
@@ -132,26 +153,48 @@ def build_profile_pdf(
 
     canvas.setTitle(f"ProfileKit - {payload['title']}")
     canvas.setAuthor("ProfileKit")
-    canvas.setFillColor(white if payload["theme"] != "minimal" else soft)
+    canvas.setFillColor(soft if payload["theme"] in {"minimal", "editorial"} else white)
     canvas.rect(0, 0, width, height, fill=1, stroke=0)
 
-    header_height = 1.72 * inch if payload["theme"] != "minimal" else 1.48 * inch
-    canvas.setFillColor(dark)
+    header_height = 1.48 * inch if payload["theme"] in {"minimal", "editorial"} else 1.72 * inch
+    canvas.setFillColor(soft if payload["theme"] in {"editorial", "minimal"} else dark)
     canvas.rect(0, height - header_height, width, header_height, fill=1, stroke=0)
-    canvas.setFillColor(accent)
-    accent_width = 0.15 * inch if payload["theme"] == "academic" else 0.28 * inch
-    canvas.rect(0, height - header_height, accent_width, header_height, fill=1, stroke=0)
+    if payload["theme"] == "sunrise":
+        canvas.setFillColor(HexColor("#F4A261"))
+        canvas.circle(width - 0.25 * inch, height - 0.26 * inch, 0.88 * inch, fill=1, stroke=0)
+        canvas.setFillColor(accent)
+        canvas.circle(width - 0.08 * inch, height - 1.35 * inch, 0.62 * inch, fill=1, stroke=0)
+    elif payload["theme"] == "studio":
+        canvas.setFillColor(accent)
+        canvas.rect(width - 1.72 * inch, height - header_height, 1.72 * inch, header_height, fill=1, stroke=0)
+        canvas.setFillColor(HexColor("#55D6D2"))
+        canvas.circle(width - 0.3 * inch, height - 0.4 * inch, 0.55 * inch, fill=1, stroke=0)
+    elif payload["theme"] == "editorial":
+        canvas.setStrokeColor(accent)
+        canvas.setLineWidth(3)
+        canvas.line(margin, height - header_height + 0.10 * inch, width - margin, height - header_height + 0.10 * inch)
+    else:
+        canvas.setFillColor(accent)
+        accent_width = 0.15 * inch if payload["theme"] == "academic" else 0.28 * inch
+        canvas.rect(0, height - header_height, accent_width, header_height, fill=1, stroke=0)
 
     title_font = "Times-Bold" if payload["font_style"] in {"serif", "hybrid"} else "Helvetica-Bold"
     body_font = "Times-Roman" if payload["font_style"] == "serif" else "Helvetica"
-    canvas.setFillColor(white)
+    canvas.setFillColor(dark if payload["theme"] in {"editorial", "minimal"} else white)
     canvas.setFont(title_font, 26 if len(payload["title"]) < 30 else 21)
     canvas.drawString(margin, height - 0.72 * inch, payload["title"][:80])
-    canvas.setFillColor(accent if payload["theme"] != "minimal" else HexColor("#B8D6CF"))
+    role_color = {
+        "academic": HexColor("#9EE8DC"),
+        "modern": HexColor("#C5C5FF"),
+        "minimal": accent,
+        "studio": HexColor("#A8F1ED"),
+        "sunrise": HexColor("#FFD5B3"),
+    }.get(payload["theme"], accent)
+    canvas.setFillColor(role_color)
     canvas.setFont("Helvetica-Bold", 10)
     canvas.drawString(margin, height - 1.03 * inch, payload["role"][:110].upper())
     if payload["context"]:
-        canvas.setFillColor(HexColor("#D8E0EC"))
+        canvas.setFillColor(HexColor("#6F5B63") if payload["theme"] in {"editorial", "minimal"} else HexColor("#D8E0EC"))
         canvas.setFont("Helvetica", 8.5)
         canvas.drawString(margin, height - 1.30 * inch, payload["context"][:125])
 
@@ -180,6 +223,8 @@ def build_profile_pdf(
         textColor=HexColor("#667085"),
     )
 
+    displayed_items = 0
+    total_items = sum(len(section["items"]) for section in payload["sections"])
     for section in payload["sections"][:6]:
         if y < 1.0 * inch:
             break
@@ -191,10 +236,12 @@ def build_profile_pdf(
             y = _paragraph(canvas, item["label"].upper(), label_style, margin, y, content_width)
             y -= 0.02 * inch
             y = _paragraph(canvas, item["value"], item_style, margin, y, content_width)
+            displayed_items += 1
             y -= 0.15 * inch
         y -= 0.07 * inch
 
-    footer = "PROFILEKIT - PRIVACY-REVIEWED ONE-PAGE PROFILE"
+    footer = ("PROFILEKIT - CONTENT SHORTENED TO FIT ONE PAGE" if displayed_items < total_items
+              else "PROFILEKIT - PRIVACY-REVIEWED ONE-PAGE PROFILE")
     canvas.setFillColor(HexColor("#7B8493"))
     canvas.setFont("Helvetica-Bold", 6.8)
     canvas.drawString(margin, 0.43 * inch, footer)

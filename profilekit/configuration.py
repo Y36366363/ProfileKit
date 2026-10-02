@@ -20,7 +20,7 @@ class EditableProfile(BaseModel):
 
 
 class DesignPreferences(BaseModel):
-    theme: Literal["academic", "modern", "minimal"] = "academic"
+    theme: Literal["academic", "modern", "minimal", "sunrise", "studio", "editorial"] = "academic"
     accent_color: str = "#147D70"
     font_style: Literal["serif", "sans", "hybrid"] = "hybrid"
     layout_density: Literal["compact", "balanced", "airy"] = "balanced"

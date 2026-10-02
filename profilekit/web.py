@@ -51,7 +51,7 @@ class ModelSelectionRequest(BaseModel):
 
 
 class ThemeSelectionRequest(BaseModel):
-    theme: Literal["academic", "modern", "minimal"]
+    theme: Literal["academic", "modern", "minimal", "sunrise", "studio", "editorial"]
 
 
 class PreferencesRequest(BaseModel):
@@ -64,7 +64,7 @@ class PreferencesRequest(BaseModel):
     tone: str = Field(default="", max_length=200)
     visual_preferences: str = Field(default="", max_length=500)
     privacy_restrictions: str = Field(default="", max_length=500)
-    theme: Literal["academic", "modern", "minimal"] = "academic"
+    theme: Literal["academic", "modern", "minimal", "sunrise", "studio", "editorial"] = "academic"
     accent_color: str = "#147D70"
     font_style: Literal["serif", "sans", "hybrid"] = "hybrid"
     layout_density: Literal["compact", "balanced", "airy"] = "balanced"
@@ -208,6 +208,7 @@ def select_theme(request: ThemeSelectionRequest) -> JSONResponse:
         raise HTTPException(status_code=400, detail="This profile theme is not available.")
     with store.lock:
         store.session.profile_theme = request.theme
+        store.session.accent_color = THEMES[request.theme]["accent"]
         store.session.audit_log.append(f"profile theme selected: {request.theme}")
         store.save()
     return JSONResponse(public_state())
@@ -311,11 +312,11 @@ def decide_item(item_index: int, request: DecisionRequest) -> JSONResponse:
 
 
 @app.post("/api/demo")
-def load_demo() -> JSONResponse:
+def load_demo(scenario: Literal["research", "technology", "creative"] = "research") -> JSONResponse:
     with store.lock:
         provider = store.session.model_provider
         model = store.session.model_name
-        store.session = build_demo_session()
+        store.session = build_demo_session(scenario)
         store.session.model_provider = provider
         store.session.model_name = model
         store.pending_sources.clear()

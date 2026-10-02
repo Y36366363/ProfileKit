@@ -13,7 +13,7 @@ from .models import (
 )
 
 
-def build_demo_session() -> ProfileSession:
+def build_demo_session(scenario: str = "research") -> ProfileSession:
     """Return a fictional, non-sensitive scenario for classroom demonstrations."""
     record = ProfileRecord(
         profile_metadata=ProfileMetadata(
@@ -108,7 +108,7 @@ def build_demo_session() -> ProfileSession:
         placeholders=["Optional approved methods list"],
         draft_status="profile_record_ready",
     )
-    return ProfileSession(
+    session = ProfileSession(
         stage=WorkflowStage.PROFILE_RECORD,
         model_provider="deepseek",
         model_name="deepseek-flash",
@@ -128,3 +128,58 @@ def build_demo_session() -> ProfileSession:
         ],
         audit_log=["demo -> personal_profile_record"],
     )
+    if scenario == "research":
+        return session
+
+    examples = {
+        "technology": {
+            "name": "Maya Patel",
+            "role": "Student developer and accessibility advocate",
+            "intro": "Builds practical web tools that make campus information easier to find and use.",
+            "project": "Built a searchable campus-resource prototype and tested navigation with five student volunteers; revised labels using their feedback.",
+            "education": "B.S. student in Computer Science, Example University, expected 2027",
+            "skills": "Python, JavaScript, accessible interface design, and usability testing",
+            "experience": "Peer technology mentor helping students troubleshoot tools and document repeatable solutions.",
+            "audience": "Internship reviewers and campus collaborators",
+            "occasion": "Student technology showcase",
+            "theme": "studio",
+        },
+        "creative": {
+            "name": "Alex Rivera",
+            "role": "Student designer and visual storyteller",
+            "intro": "Turns complex community stories into clear, welcoming visual experiences.",
+            "project": "Created a visual identity and information poster for a fictional neighborhood arts event, then refined the hierarchy after peer critique.",
+            "education": "B.A. student in Graphic Design, Example University, expected 2027",
+            "skills": "Editorial layout, illustration, typography, and audience research",
+            "experience": "Student design volunteer producing event graphics and accessible social posts for campus clubs.",
+            "audience": "Creative collaborators and course reviewers",
+            "occasion": "Design portfolio showcase",
+            "theme": "sunrise",
+        },
+    }
+    if scenario not in examples:
+        raise ValueError(f"Unknown demo scenario: {scenario}")
+    example = examples[scenario]
+    replacements = {
+        "Preferred name": example["name"],
+        "Current role": example["role"],
+        "Short introduction": example["intro"],
+        "Class project": example["project"],
+        "Education": example["education"],
+        "Methods": example["skills"],
+        "Selected experience": example["experience"],
+    }
+    session.record.items = [
+        item.model_copy(update={"value": replacements[item.label]})
+        for item in session.record.items
+        if item.label in replacements
+    ]
+    session.record.links = []
+    session.record.profile_metadata.audience = example["audience"]
+    session.record.profile_metadata.occasion = example["occasion"]
+    session.record.profile_metadata.visual_preferences = f"Distinctive {example['theme']} layout with readable text"
+    session.record.uncertainties = []
+    session.profile_theme = example["theme"]
+    session.accent_color = "#6557CF" if scenario == "technology" else "#D94F44"
+    session.audit_log.append(f"fictional scenario selected: {scenario}")
+    return session
