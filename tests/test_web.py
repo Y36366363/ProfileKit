@@ -10,7 +10,7 @@ from pypdf import PdfReader
 from docx import Document
 
 from profilekit.models import AgentTurn, ItemStatus, ProfileItem, ProfileRecord, ProfileSession, WorkflowStage
-from profilekit.profile_document import build_profile_pdf
+from profilekit.profile_document import build_profile_pdf, presentation_payload
 from profilekit.web import SessionStore, app
 import profilekit.web as web_module
 
@@ -124,6 +124,40 @@ class WebAppTests(unittest.TestCase):
         pdf = build_profile_pdf(record)
         text = PdfReader(BytesIO(pdf)).pages[0].extract_text()
         self.assertIn("CONTENT SHORTENED TO FIT ONE PAGE", text)
+        layout = presentation_payload(record, "academic")
+        self.assertGreater(layout["omitted_items"], 0)
+        for section in layout["sections"]:
+            for item in section["items"]:
+                self.assertIn(item["value"], text)
+        self.assertNotIn("Extra 9", text)
+
+    def test_long_introduction_and_header_are_shortened_consistently(self):
+        self.client.post("/api/demo")
+        record = web_module.store.session.record.model_copy(deep=True)
+        record.items[0].value = "A very long preferred name " * 10
+        record.items[2].value = "An expansive introduction about research and design. " * 80
+        layout = presentation_payload(record, "editorial")
+        self.assertTrue(layout["header_shortened"])
+        self.assertTrue(layout["introduction_shortened"])
+        pdf = PdfReader(BytesIO(build_profile_pdf(record, "editorial")))
+        self.assertEqual(len(pdf.pages), 1)
+        text = pdf.pages[0].extract_text()
+        self.assertIn(layout["title"], text)
+        self.assertIn("CONTENT SHORTENED TO FIT ONE PAGE", text)
+
+    def test_long_single_entry_is_summarized_without_changing_record(self):
+        self.client.post("/api/demo")
+        record = web_module.store.session.record.model_copy(deep=True)
+        long_value = "A detailed but fictional project account with interview notes and iterations. " * 55
+        record.items[3].value = long_value
+        layout = presentation_payload(record, "studio")
+        self.assertEqual(record.items[3].value, long_value)
+        self.assertEqual(layout["shortened_items"], 1)
+        value = layout["sections"][0]["items"][0]["value"]
+        self.assertTrue(value.endswith("..."))
+        self.assertLess(len(value), len(long_value))
+        text = PdfReader(BytesIO(build_profile_pdf(record, "studio"))).pages[0].extract_text()
+        self.assertIn(" ".join(value.split()), " ".join(text.split()))
 
     def test_pdf_export_is_one_page_and_omits_unconfirmed_email(self):
         self.client.post("/api/demo")

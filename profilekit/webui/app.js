@@ -126,11 +126,11 @@ function renderPreview(state) {
   `).join("");
   els.profilePreview.className = `profile-page theme-${profile.theme || "academic"}`;
   els.profilePreview.style.setProperty("--profile-accent", profile.accent_color || "#147d70");
+  els.profilePreview.style.setProperty("--fit-scale", profile.layout_scale || 1);
   els.profilePreview.dataset.font = profile.font_style || "hybrid";
   els.profilePreview.dataset.density = profile.layout_density || "balanced";
   els.profilePreview.innerHTML = `
     <header class="profile-header">
-      <p class="profile-kicker">One-page profile</p>
       <h3>${escapeHtml(profile.title || "Your Name")}</h3>
       <p class="profile-role">${escapeHtml(profile.role || "Personal Profile")}</p>
       ${profile.context ? `<p class="profile-context">${escapeHtml(profile.context)}</p>` : ""}
@@ -139,14 +139,17 @@ function renderPreview(state) {
       <p class="profile-intro">${escapeHtml(profile.introduction || "Your approved introduction will appear here.")}</p>
       <div class="profile-sections">${sections || `<div class="profile-placeholder">Approve profile details to build the page.</div>`}</div>
     </div>
-    <footer>ProfileKit · privacy-reviewed profile <span>1 / 1</span></footer>
+    <footer>${profile.omitted_items || profile.shortened_items || profile.introduction_shortened || profile.header_shortened ? "ProfileKit · content shortened to fit one page" : "ProfileKit · privacy-reviewed profile"} <span>1 / 1</span></footer>
   `;
   requestAnimationFrame(() => {
     const body = els.profilePreview.querySelector(".profile-body");
     const crowded = body && body.scrollHeight > body.clientHeight + 1;
+    const omitted = profile.omitted_items || 0;
     els.previewNote.textContent = crowded
-      ? "This page is crowded. Choose Compact density, shorten entries, or export the PDF to check its one-page fit."
-      : "The preview updates automatically. Restricted and unconfirmed sensitive items stay out of the public page.";
+      ? "The browser preview is crowded. Shorten entries or choose Compact density; the PDF uses the same selected content."
+      : omitted || profile.shortened_items || profile.introduction_shortened || profile.header_shortened
+        ? `${omitted} ${omitted === 1 ? "entry" : "entries"} omitted${profile.shortened_items ? `; ${profile.shortened_items} shortened` : ""}${profile.introduction_shortened ? "; introduction shortened" : ""}${profile.header_shortened ? "; header shortened" : ""} to keep one page. Full content remains in Review record. Choose Compact density or edit the text to include more.`
+        : "The preview and PDF use the same approved content. Restricted and unconfirmed sensitive items stay out.";
   });
   const empty = !(state.record?.items || []).length;
   els.pdfButton.classList.toggle("disabled", empty);

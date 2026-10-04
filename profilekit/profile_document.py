@@ -112,7 +112,7 @@ def presentation_payload(
         grouped["Links"] = approved_links
 
     metadata = record.profile_metadata
-    return {
+    payload = {
         "theme": theme if theme in THEMES else "academic",
         "accent_color": accent_color or THEMES.get(theme, THEMES["academic"])["accent"],
         "font_style": font_style,
@@ -124,6 +124,116 @@ def presentation_payload(
         "context": " - ".join(value for value in (metadata.occasion, metadata.audience) if value),
         "is_placeholder": not bool(visible),
     }
+    return _fit_one_page(payload)
+
+
+def _text_height(text: str, font: str, size: float, leading: float, width: float) -> float:
+    style = ParagraphStyle("measure", fontName=font, fontSize=size, leading=leading)
+    paragraph = Paragraph(escape(text).replace("\n", "<br/>"), style)
+    return paragraph.wrap(width, 10 * inch)[1]
+
+
+def _one_line(text: str, font: str, size: float, width: float) -> str:
+    text = " ".join(text.split())
+    if stringWidth(text, font, size) <= width:
+        return text
+    while text and stringWidth(text + "...", font, size) > width:
+        text = text[:-1]
+    return text.rstrip() + "..."
+
+
+def _limit_lines(text: str, font: str, size: float, leading: float, width: float, lines: int) -> tuple[str, bool]:
+    if _text_height(text, font, size, leading, width) <= lines * leading:
+        return text, False
+    words = text.split()
+    low, high = 1, len(words)
+    best = ""
+    while low <= high:
+        middle = (low + high) // 2
+        candidate = " ".join(words[:middle]).rstrip(".,;: ") + "..."
+        if _text_height(candidate, font, size, leading, width) <= lines * leading:
+            best = candidate
+            low = middle + 1
+        else:
+            high = middle - 1
+    if best:
+        return best, True
+    # A single unbroken token still needs a finite, visible prefix.
+    return _one_line(text, font, size, width), True
+
+
+def _fit_one_page(payload: dict[str, Any]) -> dict[str, Any]:
+    """Choose one deterministic content/layout plan for both preview and PDF."""
+    width, height = letter
+    margin = 0.68 * inch
+    content_width = width - 2 * margin
+    header_height = (1.48 if payload["theme"] in {"minimal", "editorial"} else 1.72) * inch
+    body_font = "Times-Roman" if payload["font_style"] == "serif" else "Helvetica"
+    title_font = "Times-Bold" if payload["font_style"] in {"serif", "hybrid"} else "Helvetica-Bold"
+    title_size = 26 if len(payload["title"]) < 30 else 21
+    title = _one_line(payload["title"], title_font, title_size, content_width)
+    role = _one_line(payload["role"].upper(), "Helvetica-Bold", 10, content_width)
+    context = _one_line(payload["context"], "Helvetica", 8.5, content_width)
+    payload["header_shortened"] = (title != payload["title"] or role != payload["role"].upper()
+                                   or context != payload["context"])
+    payload["title"], payload["role"], payload["context"] = title, role, context
+    density = {"compact": 0.88, "balanced": 1.0, "airy": 1.08}[payload["layout_density"]]
+    source_sections = []
+    for section in payload["sections"]:
+        planned_items = []
+        for item in section["items"]:
+            value, shortened = _limit_lines(item["value"], body_font, 9.5 * 0.84,
+                                            13 * density * 0.84, content_width, 6)
+            planned_items.append({**item, "value": value, "_shortened": shortened})
+        source_sections.append({"heading": section["heading"], "items": planned_items})
+    total_items = sum(len(section["items"]) for section in source_sections)
+    intro = payload["introduction"]
+    intro_shortened = False
+    # The introduction is capped before fitting entries, so one long paragraph
+    # cannot consume the entire page. The original remains in the editable record.
+    intro, intro_shortened = _limit_lines(intro, body_font, 12.2, 17 * density, content_width, 6)
+
+    chosen_sections: list[dict[str, Any]] = []
+    chosen_scale = 0.84
+    for scale in (1.0, 0.94, 0.88, 0.84):
+        y = height - header_height - 0.38 * inch
+        y -= _text_height(intro, body_font, 12.2 * scale, 17 * density * scale, content_width)
+        y -= 0.54 * inch * scale
+        fitted: list[dict[str, Any]] = []
+        stop = False
+        for section in source_sections:
+            section_items: list[dict[str, str]] = []
+            heading_height = _text_height(section["heading"].upper(), "Helvetica-Bold", 8.5 * scale, 10 * scale, content_width)
+            for item in section["items"]:
+                item_height = (
+                    _text_height(item["label"].upper(), "Helvetica-Bold", 7.2 * scale, 9 * scale, content_width)
+                    + _text_height(item["value"], body_font, 9.5 * scale, 13 * density * scale, content_width)
+                    + (0.17 * inch) * scale
+                )
+                needed = item_height + (heading_height + 0.06 * inch * scale if not section_items else 0)
+                if y - needed < 0.82 * inch:
+                    stop = True
+                    break
+                y -= needed
+                section_items.append(item)
+            if section_items:
+                fitted.append({"heading": section["heading"], "items": section_items})
+                y -= 0.07 * inch * scale
+            if stop:
+                break
+        chosen_sections, chosen_scale = fitted, scale
+        if sum(len(section["items"]) for section in fitted) == total_items:
+            break
+
+    shown = sum(len(section["items"]) for section in chosen_sections)
+    shortened_items = sum(item.pop("_shortened") for section in chosen_sections for item in section["items"])
+    payload["sections"] = chosen_sections
+    payload["introduction"] = intro
+    payload["layout_scale"] = chosen_scale
+    payload["omitted_items"] = total_items - shown
+    payload["shortened_items"] = shortened_items
+    payload["introduction_shortened"] = intro_shortened
+    return payload
 
 
 def _paragraph(canvas: Canvas, text: str, style: ParagraphStyle, x: float, y: float, width: float) -> float:
@@ -182,7 +292,7 @@ def build_profile_pdf(
     body_font = "Times-Roman" if payload["font_style"] == "serif" else "Helvetica"
     canvas.setFillColor(dark if payload["theme"] in {"editorial", "minimal"} else white)
     canvas.setFont(title_font, 26 if len(payload["title"]) < 30 else 21)
-    canvas.drawString(margin, height - 0.72 * inch, payload["title"][:80])
+    canvas.drawString(margin, height - 0.72 * inch, payload["title"])
     role_color = {
         "academic": HexColor("#9EE8DC"),
         "modern": HexColor("#C5C5FF"),
@@ -192,55 +302,49 @@ def build_profile_pdf(
     }.get(payload["theme"], accent)
     canvas.setFillColor(role_color)
     canvas.setFont("Helvetica-Bold", 10)
-    canvas.drawString(margin, height - 1.03 * inch, payload["role"][:110].upper())
+    canvas.drawString(margin, height - 1.03 * inch, payload["role"])
     if payload["context"]:
         canvas.setFillColor(HexColor("#6F5B63") if payload["theme"] in {"editorial", "minimal"} else HexColor("#D8E0EC"))
         canvas.setFont("Helvetica", 8.5)
-        canvas.drawString(margin, height - 1.30 * inch, payload["context"][:125])
+        canvas.drawString(margin, height - 1.30 * inch, payload["context"])
 
     y = height - header_height - 0.38 * inch
     density_scale = {"compact": 0.88, "balanced": 1.0, "airy": 1.08}[payload["layout_density"]]
+    scale = payload["layout_scale"]
     intro_style = ParagraphStyle(
-        "intro", fontName=body_font, fontSize=12.2, leading=17 * density_scale,
+        "intro", fontName=body_font, fontSize=12.2 * scale, leading=17 * density_scale * scale,
         textColor=dark, alignment=TA_LEFT,
     )
     y = _paragraph(canvas, payload["introduction"], intro_style, margin, y, content_width)
-    y -= 0.24 * inch
+    y -= 0.24 * inch * scale
     canvas.setStrokeColor(accent)
     canvas.setLineWidth(1.4)
     canvas.line(margin, y, margin + content_width, y)
-    y -= 0.30 * inch
+    y -= 0.30 * inch * scale
 
     heading_style = ParagraphStyle(
-        "heading", fontName="Helvetica-Bold", fontSize=8.5, leading=10,
+        "heading", fontName="Helvetica-Bold", fontSize=8.5 * scale, leading=10 * scale,
         textColor=accent, spaceAfter=4,
     )
     item_style = ParagraphStyle(
-        "item", fontName=body_font, fontSize=9.5, leading=13 * density_scale, textColor=dark,
+        "item", fontName=body_font, fontSize=9.5 * scale, leading=13 * density_scale * scale, textColor=dark,
     )
     label_style = ParagraphStyle(
-        "label", fontName="Helvetica-Bold", fontSize=7.2, leading=9,
+        "label", fontName="Helvetica-Bold", fontSize=7.2 * scale, leading=9 * scale,
         textColor=HexColor("#667085"),
     )
 
-    displayed_items = 0
-    total_items = sum(len(section["items"]) for section in payload["sections"])
-    for section in payload["sections"][:6]:
-        if y < 1.0 * inch:
-            break
+    for section in payload["sections"]:
         y = _paragraph(canvas, section["heading"].upper(), heading_style, margin, y, content_width)
-        y -= 0.06 * inch
-        for item in section["items"][:4]:
-            if y < 0.82 * inch:
-                break
+        y -= 0.06 * inch * scale
+        for item in section["items"]:
             y = _paragraph(canvas, item["label"].upper(), label_style, margin, y, content_width)
-            y -= 0.02 * inch
+            y -= 0.02 * inch * scale
             y = _paragraph(canvas, item["value"], item_style, margin, y, content_width)
-            displayed_items += 1
-            y -= 0.15 * inch
-        y -= 0.07 * inch
+            y -= 0.15 * inch * scale
+        y -= 0.07 * inch * scale
 
-    footer = ("PROFILEKIT - CONTENT SHORTENED TO FIT ONE PAGE" if displayed_items < total_items
+    footer = ("PROFILEKIT - CONTENT SHORTENED TO FIT ONE PAGE" if payload["omitted_items"] or payload["shortened_items"] or payload["introduction_shortened"] or payload["header_shortened"]
               else "PROFILEKIT - PRIVACY-REVIEWED ONE-PAGE PROFILE")
     canvas.setFillColor(HexColor("#7B8493"))
     canvas.setFont("Helvetica-Bold", 6.8)

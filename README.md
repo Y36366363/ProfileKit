@@ -108,8 +108,13 @@ server clears it.
 For a quick style comparison, load any fictional example, choose a template in
 the preview, then use **Customize** to tune its accent color, typography, and
 density. Template changes set a readable default accent; a later manual color
-choice overrides it. Long content can exceed a single page: the preview warns
-when crowded, and the PDF footer states when entries were shortened.
+choice overrides it. The preview and PDF now use the same one-column content
+plan. For long material, ProfileKit first adjusts spacing and type size within
+a readable range and shortens unusually long individual entries, then omits
+trailing entries only if needed. It reports the number omitted and any shortened
+entries, header, or introduction in the preview and
+marks shortened output in the PDF footer. The complete text remains in the
+editable Personal Profile Record.
 
 Run `python -m profilekit.preflight` to check every example against all six
 PDF themes without an API call. Run `python scripts/build_demo_gallery.py` to
