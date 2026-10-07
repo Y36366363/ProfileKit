@@ -31,7 +31,8 @@ class WebAppTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("ProfileKit", response.text)
         self.assertIn("Personal Profile Record", response.text)
-        self.assertIn("From sources to one clear page", response.text)
+        self.assertIn("Create a one-page profile", response.text)
+        self.assertIn("Privacy-First Profile Builder", response.text)
 
     def test_public_state_never_exposes_api_key(self):
         response = self.client.get("/api/session")

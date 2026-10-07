@@ -1,4 +1,4 @@
-# ProfileKit
+# ProfileKit — Privacy-First Profile Builder
 
 ProfileKit is a privacy-conscious conversational agent for turning user-approved
 information into editable, single-page profile materials. It supports
@@ -25,22 +25,23 @@ what a user should disclose.
 - `config/system_prompt.md` — the agent's main instruction.
 - `evals/` — acceptance rubric and adversarial test cases.
 
-## Run locally
+## First-time setup
 
-Python 3.11+ is recommended.
+Use Terminal on macOS. Python 3.11+ is required. The project path contains
+spaces, so keep the quotes in the `cd` command. Run these commands from any
+starting directory, including `~`. If you move or clone the project elsewhere,
+replace the `cd` path with its new location:
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-export OPENAI_API_KEY="your-key"
-export PROFILEKIT_MODEL="gpt-6-astra"
-profilekit
+cd "$HOME/Documents/UNC/INLS 690/ProfileKit"
+python3 -m venv .venv
+./.venv/bin/python -m pip install -e .
 ```
 
-Alternatively, place the variables in the ignored local `.env` file. ProfileKit
-loads it automatically and does not override values already exported in your
-terminal.
+The local `.env` file is ignored by Git and loaded automatically; do not paste
+API keys into Terminal or README. You do not need `source .venv/bin/activate`.
+Using `./.venv/bin/python` also avoids accidentally using the `(base)` Conda
+Python shown in your prompt.
 
 ProfileKit defaults to `deepseek-flash` for lower-cost classroom use. The web
 app can switch each local session among DeepSeek Flash, DeepSeek V4 Pro, OpenAI
@@ -50,7 +51,7 @@ fallback. A selection is available only when its provider key is configured.
 Pass sources explicitly with repeatable `--source` options:
 
 ```bash
-profilekit --source resume.pdf --source project-notes.docx
+./.venv/bin/python -m profilekit.cli --source resume.pdf --source project-notes.docx
 ```
 
 Supported inputs are plain text, Markdown, JSON, YAML, CSV/TSV, PDF, DOCX, and
@@ -59,19 +60,26 @@ version; the image is registered as requiring authorization and the agent offers
 a text-only or placeholder route. A supplied file is approved for inspection,
 not automatically for public display.
 
-## Run the classroom web app
+## Start ProfileKit — Privacy-First Profile Builder
 
-The visual workspace is the recommended way to demonstrate ProfileKit:
+Every time you want to use the website, open Terminal and run:
 
 ```bash
-source .venv/bin/activate
-profilekit-web
+cd "$HOME/Documents/UNC/INLS 690/ProfileKit"
+./.venv/bin/python -m profilekit.web
 ```
 
-Before class, run the offline safety check:
+Leave that Terminal window open while using ProfileKit. The app will open
+`http://127.0.0.1:8765/` in your browser; if it does not open automatically,
+paste that address into your browser. Press `Control-C` in Terminal to stop it.
+No GitHub login or internet connection is needed to open the local page; an
+internet connection and a configured API key are needed for AI model calls.
+
+To check the local setup separately, run:
 
 ```bash
-python -m profilekit.preflight
+cd "$HOME/Documents/UNC/INLS 690/ProfileKit"
+./.venv/bin/python -m profilekit.preflight
 ```
 
 It checks the local configuration, provider readiness, web assets, one-page PDF
@@ -95,7 +103,7 @@ It opens `http://127.0.0.1:8765` and provides:
   and student designer) selected beside **Load demo**; and
 - local JSON export for inspecting the agent state.
 
-Use `profilekit-web --no-browser` when you do not want it to open a browser
+Use `./.venv/bin/python -m profilekit.web --no-browser` when you do not want it to open a browser
 automatically. The web session is stored locally in
 `.profilekit/web-session.json`, ignored by Git, and written with user-only file
 permissions. API keys remain on the server and are never sent to the page.
@@ -116,8 +124,8 @@ entries, header, or introduction in the preview and
 marks shortened output in the PDF footer. The complete text remains in the
 editable Personal Profile Record.
 
-Run `python -m profilekit.preflight` to check every example against all six
-PDF themes without an API call. Run `python scripts/build_demo_gallery.py` to
+Run `./.venv/bin/python -m profilekit.preflight` to check every example against all six
+PDF themes without an API call. Run `./.venv/bin/python scripts/build_demo_gallery.py` to
 regenerate the three fictional sample PDFs in `output/pdf/`.
 
 The template direction was informed by [Reactive Resume's content-first design
@@ -136,12 +144,13 @@ You can configure a profile in three complementary ways:
 
 Session data is saved locally to `.profilekit/session.json` by default. Do not
 commit that file; it can contain personal information. Choose a different path
-with `profilekit --session /path/to/session.json`.
+with `./.venv/bin/python -m profilekit.cli --session /path/to/session.json`.
 
 ## Test without an API key
 
 ```bash
-python -m unittest discover -s tests -v
+cd "$HOME/Documents/UNC/INLS 690/ProfileKit"
+./.venv/bin/python -m unittest discover -s tests -v
 ```
 
 ## Privacy notes
@@ -158,19 +167,21 @@ employment, immigration, medical, financial, or formal accessibility advice.
 
 ## Upload to GitHub yourself
 
-No GitHub credentials or connection are required by this project. When you are
-ready, initialize and push it from this directory:
+No GitHub credentials or connection are required to run ProfileKit. This
+checkout already has a local Git repository and commits. If you later decide
+to publish it yourself, first review the files and existing remotes:
 
 ```bash
-git init -b main
-git add .
-git commit -m "Initial ProfileKit agent"
-git remote add origin YOUR_REPOSITORY_URL
-git push -u origin main
+cd "$HOME/Documents/UNC/INLS 690/ProfileKit"
+git status
+git remote -v
 ```
 
-Review `git status` before committing. `.venv`, `.env`, and `.profilekit` are
-ignored so dependencies, secrets, and local profile sessions are not uploaded.
+Only if `origin` is not already configured, add your own repository URL with
+`git remote add origin YOUR_REPOSITORY_URL`, then run `git push -u origin main`.
+Do not publish until you have reviewed the repository. `.venv`, `.env`, and
+`.profilekit` are ignored so dependencies, secrets, and local profile sessions
+are not uploaded.
 
 ## Test API credentials safely
 
@@ -178,11 +189,12 @@ ignored so dependencies, secrets, and local profile sessions are not uploaded.
 safe to commit. The diagnostic script never prints keys or generated content:
 
 ```bash
+cd "$HOME/Documents/UNC/INLS 690/ProfileKit"
 # Authentication and model-list checks only
-python scripts/test_api_keys.py
+./.venv/bin/python scripts/test_api_keys.py
 
 # Also send one minimal generation request to each provider
-python scripts/test_api_keys.py --generate
+./.venv/bin/python scripts/test_api_keys.py --generate
 ```
 
 The local ProfileKit runtime uses the OpenAI Agents SDK with either OpenAI or

@@ -371,7 +371,7 @@ app.mount("/assets", StaticFiles(directory=WEB_ROOT), name="assets")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run the ProfileKit classroom web app")
+    parser = argparse.ArgumentParser(description="Start ProfileKit, the privacy-first profile builder")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     parser.add_argument("--no-browser", action="store_true")
